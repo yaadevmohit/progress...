@@ -7,14 +7,16 @@ import { AuthMobileButton } from "./AuthMobileButton";
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <header className="bg-white text-black px-6 py-3 mx-auto w-full border-b border-neutral-100 relative">
-      <nav className="flex items-center justify-between max-w-6xl mx-auto">
+    <header className="sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b border-black/10 bg-white px-3 py-3 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between">
 
         {/* Logo */}
-        <span className=" text-lg tracking-tight">learners<span className="font-bold">Log</span></span>
+        <span className="shrink-0 font-['Avenir_Next','Century_Gothic',sans-serif] text-2xl leading-none font-semibold tracking-[-0.055em] sm:text-3xl">
+          progress..
+        </span>
 
         {/* Right-side actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             className="group flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700
                        text-white text-sm font-bold px-4 py-3 rounded-2xl
@@ -69,9 +71,9 @@ export default function Header() {
 
       {/* Mobile dropdown — always in DOM, animated via max-height + opacity */}
       <div
-        className={`md:hidden absolute left-0 right-0 top-full bg-white border-b border-neutral-100
+        className={`md:hidden absolute left-0 right-0 top-full mt-1 rounded-2xl bg-white border border-black/10
                     shadow-lg z-50 overflow-hidden transition-all duration-300 ease-in-out
-                    ${menuOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0 border-b-0 shadow-none"}`}
+                    ${menuOpen ? "max-h-40 opacity-100" : "pointer-events-none max-h-0 opacity-0 border-transparent shadow-none"}`}
       >
         <div className="px-6 py-4 flex flex-col gap-3">
           <AuthMobileButton>Log in</AuthMobileButton>
