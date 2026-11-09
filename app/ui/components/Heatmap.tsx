@@ -1,42 +1,11 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
-import { useRef, useState } from "react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
-const WEEK_COUNT = 52;
+import { getActivityMonths, MONTH_LABELS, YEARS } from "../mock-data";
 
-// Each column is a mock week, starting on Monday. Intensity runs from 0 to 4.
-const WEEKS = [
-  [0, 1, 0, 0, 1, 0, 0],
-  [0, 0, 1, 0, 1, 0, 0],
-  [1, 0, 0, 1, 0, 0, 1],
-  [0, 1, 0, 0, 1, 1, 0],
-  [0, 0, 1, 0, 0, 0, 0],
-  [1, 0, 0, 1, 0, 0, 0],
-  [0, 1, 0, 0, 0, 1, 0],
-  [0, 0, 1, 0, 0, 0, 1],
-  [0, 0, 0, 0, 1, 0, 0],
-  [0, 1, 0, 1, 0, 0, 0],
-  [1, 0, 0, 0, 1, 0, 1],
-  [0, 1, 1, 0, 1, 0, 0],
-  [1, 0, 1, 1, 0, 1, 0],
-  [1, 1, 0, 1, 1, 0, 1],
-  [2, 1, 2, 1, 1, 2, 1],
-  [2, 1, 2, 3, 2, 3, 2],
-  [3, 2, 3, 2, 3, 4, 3],
-  [3, 4, 3, 4, 3, 4, 4],
-  [4, 2, 3, 1, 4, 3, 2],
-  [2, 0, 3, 4, 4, 1, 3],
-  [3, 4, 2, 4, 3, 4, 4],
-  [4, 3, 4, 4, 2, 4, 3],
-  [3, 2, 4, 3, 1, 4, 4],
-  [4, 4, 3, 2, 4, 3, 2],
-  [3, 1, 4, 4, 2, 4, 3],
-  [4, 3, 4, 2, 4, 1, 4],
-];
-
-const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_NAME = new Intl.DateTimeFormat("en", { month: "long", timeZone: "UTC" });
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const INTENSITY_CLASSES = [
   "bg-neutral-100",
@@ -47,6 +16,8 @@ const INTENSITY_CLASSES = [
 ];
 
 export default function Heatmap() {
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [monthZoom, setMonthZoom] = useState<{ month: number; origin: string } | null>(null);
   const [year, setYear] = useState(YEARS[0]);
   const [tileInfo, setTileInfo] = useState<{
     period: string;
@@ -55,6 +26,7 @@ export default function Heatmap() {
     top: number;
   } | null>(null);
   const activityCard = useRef<HTMLElement>(null);
+  const yearlyGrid = useRef<HTMLDivElement>(null);
   const yearPicker = useRef<HTMLDetailsElement>(null);
   const yearTrigger = useRef<HTMLElement>(null);
 
@@ -76,21 +48,100 @@ export default function Heatmap() {
     yearTrigger.current?.focus();
   }
 
-  // Reuse the sample weeks in a different order for each year.
-  const yearOffset = YEARS[0] - year;
-  const weeks = Array.from({ length: WEEK_COUNT }, (_, week) => {
-    const sampleIndex = (week * 7 + Math.floor(week / WEEKS.length) + yearOffset * 3) % WEEKS.length;
-    return WEEKS[sampleIndex];
-  });
+  const beginMonthZoom = useCallback((target: HTMLElement) => {
+    if (selectedMonth !== null || monthZoom !== null) return;
+    const month = Number(target.dataset.month);
+    const grid = yearlyGrid.current?.getBoundingClientRect();
+    setTileInfo(null);
+
+    if (!grid || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setSelectedMonth(month);
+      return;
+    }
+
+    const tile = target.getBoundingClientRect();
+    const x = (tile.left + tile.width / 2 - grid.left) / grid.width * 100;
+    const y = (tile.top + tile.height / 2 - grid.top) / grid.height * 100;
+    setMonthZoom({ month, origin: `${x}% ${y}%` });
+  }, [monthZoom, selectedMonth]);
+
+  useEffect(() => {
+    const card = activityCard.current;
+    if (!card) return;
+
+    function zoomIntoMonth(target: EventTarget | null) {
+      if (!(target instanceof Element)) return;
+      const monthTile = target.closest<HTMLElement>("[data-month]");
+      if (!monthTile) return;
+
+      beginMonthZoom(monthTile);
+    }
+
+    function handleWheel(event: WheelEvent) {
+      // Chromium and Firefox report trackpad pinch as Ctrl+wheel.
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      if (event.deltaY < 0) zoomIntoMonth(event.target);
+    }
+
+    function handleGesture(event: Event) {
+      // Safari also exposes its own pinch events.
+      event.preventDefault();
+      if (event.type === "gesturechange" && "scale" in event &&
+          typeof event.scale === "number" && event.scale > 1.02) {
+        zoomIntoMonth(event.target);
+      }
+    }
+
+    card.addEventListener("wheel", handleWheel, { passive: false });
+    card.addEventListener("gesturestart", handleGesture, { passive: false });
+    card.addEventListener("gesturechange", handleGesture, { passive: false });
+    return () => {
+      card.removeEventListener("wheel", handleWheel);
+      card.removeEventListener("gesturestart", handleGesture);
+      card.removeEventListener("gesturechange", handleGesture);
+    };
+  }, [beginMonthZoom]);
+
+  const months = useMemo(() => getActivityMonths(year), [year]);
+
+  function renderTile(key: string, period: string, count: number, intensity: number, month?: number, day?: number) {
+    const activity = `${count} ${count === 1 ? "activity" : "activities"}`;
+
+    return (
+      <button
+        key={key}
+        type="button"
+        data-month={month}
+        aria-label={`${period}: ${activity}`}
+        onPointerEnter={(event) => showTileInfo(event.currentTarget, period, activity)}
+        onPointerLeave={() => setTileInfo(null)}
+        onFocus={(event) => showTileInfo(event.currentTarget, period, activity)}
+        onBlur={() => setTileInfo(null)}
+        onClick={(event) => showTileInfo(event.currentTarget, period, activity)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setTileInfo(null);
+        }}
+        style={{ animationDelay: `${month !== undefined ? month * 40 : ((day ?? 1) - 1) * 18}ms` }}
+        className={`w-full cursor-pointer rounded-md text-xs font-medium inset-ring inset-ring-black/5 hover:inset-ring-black/35 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-neutral-950 motion-safe:animate-[heatmap-tile-in_460ms_ease-out_backwards] motion-safe:transition-[background-color] motion-safe:duration-500 motion-safe:ease-in-out ${day === undefined ? "aspect-square max-h-9 [@media(max-height:699px)]:h-5 [@media(max-height:699px)]:aspect-auto" : "h-full min-h-0 max-h-10 aspect-auto"} ${intensity >= 3 ? "text-white" : "text-neutral-900"} ${INTENSITY_CLASSES[intensity]}`}
+      >
+        {day}
+      </button>
+    );
+  }
+
+  const monthDays = selectedMonth === null ? null : months[selectedMonth];
+  const monthName = monthDays ? MONTH_NAME.format(monthDays[0].date) : "";
+
   return (
     <section ref={activityCard} aria-labelledby="practice-activity" className="relative rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-800 sm:p-5 [@media(max-height:699px)]:py-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2">
         <h2 id="practice-activity" className="text-2xl font-semibold tracking-tight text-neutral-900">
           Activity
         </h2>
         <details
           ref={yearPicker}
-          className="group relative shrink-0"
+          className="group relative w-28 shrink-0"
           onBlur={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget)) {
               event.currentTarget.open = false;
@@ -106,7 +157,7 @@ export default function Heatmap() {
           <summary
             ref={yearTrigger}
             aria-label={`Activity year, ${year}`}
-            className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm hover:bg-emerald-50 [&::-webkit-details-marker]:hidden"
+            className="flex h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm hover:bg-emerald-50 [&::-webkit-details-marker]:hidden"
           >
             {year === YEARS[0] ? "This year" : year}
             <ChevronDown aria-hidden="true" size={14} className="text-neutral-400 group-open:rotate-180" />
@@ -131,47 +182,81 @@ export default function Heatmap() {
         </details>
       </div>
 
-      <div onScroll={() => setTileInfo(null)} className="mt-6 overflow-x-auto sm:mt-8 [@media(max-height:699px)]:mt-4">
+      <div className="relative pt-6 sm:pt-8 [@media(max-height:699px)]:pt-4">
+        {/* Keep the yearly grid in the layout to reserve the same space in both views. */}
         <div
-          role="group"
-          aria-label={`Mock practice intensity for ${year}, grouped by month and day of the week.`}
-          className="grid min-w-[27rem] grid-cols-[2.25rem_repeat(12,minmax(0,1fr))] gap-1.5 sm:gap-2"
+          inert={monthDays !== null}
+          aria-hidden={monthDays !== null}
+          onScroll={() => setTileInfo(null)}
+          className={monthDays ? "invisible overflow-x-auto" : "overflow-x-auto"}
         >
-          <span />
-          {MONTH_LABELS.map((label) => (
-            <span key={label} className="pb-1 text-center text-xs text-neutral-600">{label}</span>
-          ))}
-          {WEEKDAY_LABELS.flatMap((weekday, dayIndex) => [
-            <span key={weekday} className="self-center text-right text-xs text-neutral-600">{weekday}</span>,
-            ...MONTH_LABELS.map((label, monthIndex) => {
-              const start = Math.floor(monthIndex * WEEK_COUNT / MONTH_LABELS.length);
-              const end = Math.floor((monthIndex + 1) * WEEK_COUNT / MONTH_LABELS.length);
-              const monthWeeks = weeks.slice(start, end);
-              const total = monthWeeks.reduce((sum, week) => sum + week[dayIndex], 0);
-              const intensity = total === 0 ? 0 : Math.max(1, Math.round(total / monthWeeks.length));
-              const period = `${weekday} · ${label} ${year}`;
-              const activity = intensity === 0 ? "No activity" : `Activity level ${intensity} of 4`;
-              const showInfo = (tile: HTMLButtonElement) => showTileInfo(tile, period, activity);
-
-              return (
+          <div className="min-w-[27rem] overflow-clip">
+            <div
+              ref={yearlyGrid}
+              role="group"
+              aria-label={`Mock practice intensity for ${year}, grouped by month and day of the week.`}
+              style={{ transformOrigin: monthZoom?.origin }}
+              onAnimationEnd={(event) => {
+                if (event.target !== event.currentTarget || event.animationName !== "heatmap-month-zoom" || !monthZoom) return;
+                setSelectedMonth(monthZoom.month);
+                setMonthZoom(null);
+              }}
+              className={`grid grid-cols-[2.25rem_repeat(12,minmax(0,1fr))] gap-1.5 sm:gap-2 ${monthZoom ? "pointer-events-none animate-[heatmap-month-zoom_300ms_ease-in_both]" : monthDays ? "" : "motion-safe:animate-[panel-enter_240ms_ease-out_both]"}`}
+            >
+              <span />
+              {MONTH_LABELS.map((label, month) => (
                 <button
-                  key={`${weekday}-${label}`}
+                  key={label}
                   type="button"
-                  aria-label={`${period}: ${activity}`}
-                  onPointerEnter={(event) => showInfo(event.currentTarget)}
-                  onPointerLeave={() => setTileInfo(null)}
-                  onFocus={(event) => showInfo(event.currentTarget)}
-                  onBlur={() => setTileInfo(null)}
-                  onClick={(event) => showInfo(event.currentTarget)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") setTileInfo(null);
-                  }}
-                  className={`aspect-square max-h-9 w-full cursor-pointer rounded-md inset-ring inset-ring-black/5 hover:inset-ring-black/35 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-neutral-950 motion-safe:transition-[background-color] motion-safe:duration-500 motion-safe:ease-in-out [@media(max-height:699px)]:h-5 [@media(max-height:699px)]:aspect-auto ${INTENSITY_CLASSES[intensity]}`}
-                />
-              );
-            }),
-          ])}
+                  data-month={month}
+                  aria-label={`View ${MONTH_NAME.format(months[month][0].date)} ${year} daily activity`}
+                  className="cursor-pointer rounded pb-1 text-center text-xs text-neutral-600 hover:text-emerald-700 hover:underline"
+                  onClick={(event) => beginMonthZoom(event.currentTarget)}
+                >
+                  {label}
+                </button>
+              ))}
+              {WEEKDAY_LABELS.flatMap((weekday, dayIndex) => [
+                <span key={weekday} className="self-center text-right text-xs text-neutral-600">{weekday}</span>,
+                ...months.map((days, month) => {
+                  const weekdayDays = days.filter((day) => day.weekday === dayIndex);
+                  const total = weekdayDays.reduce((sum, day) => sum + day.count, 0);
+                  const intensity = total === 0 ? 0 : Math.max(1, Math.round(total / weekdayDays.length));
+                  const period = `${weekday} · ${MONTH_LABELS[month]} ${year}`;
+                  return renderTile(`${weekday}-${month}`, period, total, intensity, month);
+                }),
+              ])}
+            </div>
+          </div>
         </div>
+
+        {monthDays && (
+          <div key={monthName} className="absolute inset-0 flex flex-col gap-2 overflow-clip pt-2 motion-safe:animate-[panel-enter_240ms_ease-out_both]">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900"
+                onClick={() => {
+                  setTileInfo(null);
+                  setSelectedMonth(null);
+                }}
+              >
+                <ArrowLeft aria-hidden="true" size={14} />
+                Back to yearly
+              </button>
+              <h3 className="w-28 text-center text-base font-semibold text-neutral-900">{monthName}</h3>
+            </div>
+            <div role="group" aria-label={`Daily activity for ${monthName} ${year}`} className="grid min-h-0 flex-1 grid-cols-7 grid-rows-[auto] auto-rows-fr gap-1.5 sm:gap-2">
+              {WEEKDAY_LABELS.map((weekday) => (
+                <span key={weekday} className="text-center text-xs text-neutral-600">{weekday}</span>
+              ))}
+              {Array.from({ length: monthDays[0].weekday }, (_, index) => <span key={index} aria-hidden="true" />)}
+              {monthDays.map(({ date, count }, index) =>
+                renderTile(date.toISOString(), `${monthName} ${index + 1}, ${year}`, count, count, undefined, index + 1),
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {tileInfo && (

@@ -1,47 +1,24 @@
-const RECENT_SESSIONS = [
-  {
-    id: "1",
-    skill: "Spanish",
-    color: "#059669",
-    notes: "Practiced past tense conjugations. Struggled with irregular verbs.",
-    duration: "45 min",
-    date: "Today",
-  },
-  {
-    id: "2",
-    skill: "Guitar",
-    color: "#8B5CF6",
-    notes: "Fingerpicking exercises and chord transitions for new song.",
-    duration: "60 min",
-    date: "Today",
-  },
-  {
-    id: "3",
-    skill: "TypeScript",
-    color: "#3B82F6",
-    notes: "Deep dive into generic constraints and mapped types.",
-    duration: "45 min",
-    date: "Yesterday",
-  },
-  {
-    id: "4",
-    skill: "Cooking",
-    color: "#EF4444",
-    notes: "Practiced knife skills and French mother sauce reductions.",
-    duration: "60 min",
-    date: "Yesterday",
-  },
-  {
-    id: "5",
-    skill: "Spanish",
-    color: "#059669",
-    notes: "Conversational practice with language exchange partner.",
-    duration: "30 min",
-    date: "2 days ago",
-  },
-];
+"use client";
+
+import { useSyncExternalStore } from "react";
+import { getServerSessionSnapshot, getSessionSnapshot, readSessions, subscribeToSessions } from "../session-log";
+
+import { HOBBIES, RECENT_SESSIONS } from "../mock-data";
 
 export default function RecentSessions() {
+  const snapshot = useSyncExternalStore(subscribeToSessions, getSessionSnapshot, getServerSessionSnapshot);
+  const loggedSessions = readSessions(snapshot).map((session) => {
+    const date = new Date(session.loggedAt);
+    return {
+      ...session,
+      duration: `${session.minutes} min`,
+      date: date.toDateString() === new Date().toDateString()
+        ? "Today"
+        : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+    };
+  });
+  const sessions = [...loggedSessions, ...RECENT_SESSIONS];
+
   return (
     <div className="bg-white rounded-2xl p-6 border border-neutral-200">
       <div className="flex justify-between items-center mb-6">
@@ -52,7 +29,7 @@ export default function RecentSessions() {
       </div>
 
       <div className="space-y-1">
-        {RECENT_SESSIONS.map((session) => (
+        {sessions.map((session) => (
           <div
             key={session.id}
             className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-neutral-50 last:border-0 hover:bg-neutral-50/50 px-2 rounded-xl transition-all"
@@ -60,7 +37,7 @@ export default function RecentSessions() {
             <div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
               <span
                 className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0"
-                style={{ backgroundColor: session.color }}
+                style={{ backgroundColor: HOBBIES[session.skill] }}
               />
               <div className="min-w-0">
                 <span className="font-bold text-neutral-800 mr-2 text-sm sm:text-base">

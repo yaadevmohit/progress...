@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Menu, X, MoveRight} from "lucide-react";
-import { AuthMobileButton } from "./AuthMobileButton";
+import { Menu, X, MoveRight } from "lucide-react";
+import LogSession from "./LogSession";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -17,15 +17,7 @@ export default function Header() {
 
         {/* Right-side actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            className="group flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700
-                       text-white text-sm font-bold px-4 py-3 rounded-2xl
-                       shadow-sm shadow-emerald-600/10 transition-all
-                       active:scale-95 cursor-pointer"
-          >
-            <Plus size={16} strokeWidth={2.5} className="transition-transform duration-300 group-hover:rotate-90" />
-            Log Session
-          </button>
+          <LogSession />
           {/* Desktop: Login & Sign Up visible inline */}
           <div className="hidden md:flex flex-row gap-2 border-l border-neutral-200 pl-2">
             <button
@@ -76,8 +68,11 @@ export default function Header() {
                     ${menuOpen ? "max-h-40 opacity-100" : "pointer-events-none max-h-0 opacity-0 border-transparent shadow-none"}`}
       >
         <div className="px-6 py-4 flex flex-col gap-3">
-          <AuthMobileButton>Log in</AuthMobileButton>
-          <AuthMobileButton>Sign up</AuthMobileButton>
+          {["Log in", "Sign up"].map((label) => (
+            <button key={label} type="button" className="cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-gray-100 hover:text-black">
+              {label}
+            </button>
+          ))}
         </div>
       </div>
     </header>

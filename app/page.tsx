@@ -3,6 +3,7 @@ import MostPracticed from "@/app/ui/components/MostPracticed";
 import SkillCard from "@/app/ui/components/SkillCard";
 import Heatmap from "@/app/ui/components/Heatmap";
 import RecentSessions from "@/app/ui/components/RecentSessions";
+import { HOBBIES, SKILL_STATS } from "@/app/ui/mock-data";
 
 export default function Home() {
   return (
@@ -14,9 +15,9 @@ export default function Home() {
           <MostPracticed />
           <div className="min-w-0 space-y-4 md:col-span-2">
             <div className="grid gap-3 sm:grid-cols-3">
-              <SkillCard name="Guitar" color="#8B5CF6" totalHours="32h" streak={8} />
-              <SkillCard name="TypeScript" color="#3B82F6" totalHours="18h" streak={3} />
-              <SkillCard name="Cooking" color="#EF4444" totalHours="12h" streak={5} />
+              {SKILL_STATS.map((skill) => (
+                <SkillCard key={skill.name} {...skill} color={HOBBIES[skill.name]} />
+              ))}
             </div>
             <Heatmap />
           </div>
