@@ -1,30 +1,28 @@
-import UserGreeting from "@/app/ui/components/UserGreeting";
-import MostPracticed from "@/app/ui/components/MostPracticed";
-import SkillCard from "@/app/ui/components/SkillCard";
-import Heatmap from "@/app/ui/components/Heatmap";
-import RecentSessions from "@/app/ui/components/RecentSessions";
-import { HOBBIES, SKILL_STATS } from "@/app/ui/mock-data";
+import Link from "next/link";
+import { MoveRight } from "lucide-react";
+import ResponsiveLunarScene from "./ui/components/ResponsiveLunarScene";
+import styles from "./home.module.css";
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-[75rem] px-4 pb-8 sm:px-6">
-      {/* The header occupies 69px above the desktop overview. */}
-      <div className="flow-root md:min-h-[calc(100svh-69px)]">
-        <UserGreeting />
-        <div className="grid gap-4 md:grid-cols-3">
-          <MostPracticed />
-          <div className="min-w-0 space-y-4 md:col-span-2">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {SKILL_STATS.map((skill) => (
-                <SkillCard key={skill.name} {...skill} color={HOBBIES[skill.name]} />
-              ))}
-            </div>
-            <Heatmap />
-          </div>
-        </div>
+    <main className={styles.hero}>
+      <div className={styles.scene} aria-hidden="true">
+        <div className={styles.landscape}><ResponsiveLunarScene /></div>
       </div>
-      <div className="mt-4">
-        <RecentSessions />
+      <div className={styles.shade} aria-hidden="true" />
+      <div className={styles.grain} aria-hidden="true" />
+
+      <div className={styles.content}>
+        <div>
+          <h1>Take control<br />of your life<span className={styles.period}>.</span></h1>
+        </div>
+        <div className={styles.intro}>
+          <p>Tools designed to stay organized and feel in control of your life.</p>
+          <Link href="/dashboard" className={styles.cta}>
+            <span className={styles.ctaLabel}>Get started</span>
+            <span className={styles.ctaArrow} aria-hidden="true"><MoveRight size={24} strokeWidth={1.5} /></span>
+          </Link>
+        </div>
       </div>
     </main>
   );

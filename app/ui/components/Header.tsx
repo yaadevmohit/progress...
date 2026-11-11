@@ -3,11 +3,19 @@
 import { useState } from "react";
 import { Menu, X, MoveRight } from "lucide-react";
 import LogSession from "./LogSession";
+import AuthDialog, { type AuthMode } from "./AuthDialog";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+
+  function openAuth(mode: AuthMode) {
+    setMenuOpen(false);
+    setAuthMode(mode);
+  }
+
   return (
-    <header className="sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b border-black/10 bg-white px-3 py-3 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6">
+    <header className="sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b border-black/10 bg-transparent px-3 py-3 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6">
       <nav className="mx-auto flex max-w-6xl items-center justify-between">
 
         {/* Logo */}
@@ -21,12 +29,18 @@ export default function Header() {
           {/* Desktop: Login & Sign Up visible inline */}
           <div className="hidden md:flex flex-row gap-2 border-l border-neutral-200 pl-2">
             <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => openAuth("login")}
               className="text-sm font-medium text-neutral-600 hover:text-black
                        px-3 py-2 rounded-xl transition-colors cursor-pointer"
             >
               Log in
             </button>
           <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => openAuth("signup")}
               className="group flex gap-2 items-center 
                        bg-black w-fit mx-auto 
                        text-white px-4 py-3 rounded-2xl 
@@ -63,18 +77,20 @@ export default function Header() {
 
       {/* Mobile dropdown — always in DOM, animated via max-height + opacity */}
       <div
+        inert={!menuOpen}
         className={`md:hidden absolute left-0 right-0 top-full mt-1 rounded-2xl bg-white border border-black/10
                     shadow-lg z-50 overflow-hidden transition-all duration-300 ease-in-out
                     ${menuOpen ? "max-h-40 opacity-100" : "pointer-events-none max-h-0 opacity-0 border-transparent shadow-none"}`}
       >
         <div className="px-6 py-4 flex flex-col gap-3">
           {["Log in", "Sign up"].map((label) => (
-            <button key={label} type="button" className="cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-gray-100 hover:text-black">
+            <button key={label} type="button" aria-haspopup="dialog" onClick={() => openAuth(label === "Log in" ? "login" : "signup")} className="cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-gray-100 hover:text-black">
               {label}
             </button>
           ))}
         </div>
       </div>
+      <AuthDialog mode={authMode} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />
     </header>
   );
 }

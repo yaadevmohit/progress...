@@ -1,0 +1,343 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: max(720px, 100svh);
+  margin-top: -69px;
+  padding: 170px 24px 24px;
+  overflow: clip;
+  color: #fff;
+  background: #111214;
+  perspective: 1100px;
+}
+
+.scene, .shade, .grain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.scene {
+  overflow: hidden;
+  transform: translateZ(0);
+  will-change: filter;
+}
+
+.landscape {
+  position: absolute;
+  inset: -2%;
+  transform-origin: 50% 40%;
+  /* Keep this layer stable; the surface camera owns the zoom. */
+  transform: translateZ(0) scale(1.025);
+}
+
+.lunarScene { width: 100%; height: 100%; display: block; }
+
+.shade {
+  background: linear-gradient(180deg, rgb(0 0 0 / 0%) 25%, rgb(0 0 0 / 3%) 44%, rgb(8 9 10 / 65%) 80%, #101113 100%);
+}
+
+.grain {
+  inset: -25%;
+  z-index: 0;
+  opacity: .82;
+  filter: contrast(260%);
+  mix-blend-mode: soft-light;
+  background: url("/images/grain.svg") repeat;
+  background-size: 280px 280px;
+  animation: grain-shift .22s steps(2) infinite;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: center;
+  gap: clamp(32px, 5vw, 80px);
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  position: relative;
+  z-index: 1;
+  padding-top: 300px;
+  padding-bottom: 88px;
+}
+
+.content h1 {
+  margin: 0;
+  font-size: clamp(56px, 7.3vw, 112px);
+  font-weight: 700;
+  line-height: .99;
+  letter-spacing: -.065em;
+}
+
+.period { color: #bcbfbc; }
+.intro { justify-self: end; max-width: 380px; text-align: center; }
+.intro > p {
+  margin-bottom: 25px;
+  font-size: clamp(19px, 2vw, 26px);
+  line-height: 1.4;
+  letter-spacing: -.025em;
+  color: #e5e6e4;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  position: relative;
+  isolation: isolate;
+  width: 230px;
+  margin-inline: auto;
+  height: 60px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgb(37 99 235 / 48%);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  color: #fff;
+  border: 1px solid rgb(184 211 255 / 55%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 35%),
+    inset 0 -1px 0 rgb(21 55 142 / 25%),
+    inset 1px 0 0 rgb(255 255 255 / 12%),
+    0 8px 28px rgb(0 15 55 / 24%);
+  text-decoration: none;
+}
+.ctaLabel {
+  padding-left: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: opacity 200ms, transform 400ms;
+}
+.ctaArrow {
+  position: absolute;
+  right: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 100%;
+  border-radius: 13px;
+  background: rgb(96 165 250 / 18%);
+  box-shadow: inset 1px 0 0 rgb(255 255 255 / 12%);
+  transition: width 500ms cubic-bezier(.22, 1, .36, 1);
+}
+.ctaArrow svg { transition: transform 500ms; }
+.cta:is(:hover, :focus-visible) .ctaArrow { width: 100%; }
+.cta:is(:hover, :focus-visible) .ctaArrow svg { transform: scale(1.35); }
+.cta:is(:hover, :focus-visible) .ctaLabel { opacity: 0; transform: translateX(-15px); }
+.cta:focus-visible { outline: 3px solid #fff; outline-offset: 5px; }
+
+.hero:has(.cta:is(:hover, :focus-visible)) .scene {
+  animation: camera-rush 1500ms ease-in-out both;
+}
+@keyframes grain-shift {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-2%, 1%); }
+  50% { transform: translate(1%, -2%); }
+  75% { transform: translate(-1%, -1%); }
+}
+@media (min-width: 768px) and (max-height: 800px) {
+  .hero { min-height: 100svh; padding-top: 130px; }
+  .content { padding-top: 260px; padding-bottom: 63px; }
+  .content h1 { font-size: clamp(56px, 7vw, 96px); }
+}
+@media (max-width: 767px) {
+  .hero { min-height: 100svh; padding: 110px 24px 20px; }
+  .lunarScene { width: 200%; max-width: none; margin-left: -50%; }
+  .content { grid-template-columns: 1fr; gap: 24px; padding-top: 310px; padding-bottom: 60px; }
+  .content h1 { font-size: clamp(52px, 12vw, 80px); }
+  .intro { max-width: 330px; }
+  .intro > p { font-size: 18px; margin-bottom: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landscape, .grain, .climber, .frontLeg, .backLeg, .frontArm, .backArm { animation: none; }
+  .landscape, .ctaLabel, .ctaArrow, .ctaArrow svg { transition: none; }
+  .hero:has(.cta:is(:hover, :focus-visible)) .landscape { transform: none; }
+}
+
+/* Hovering at the foot of the stairs until the camera moves in. */
+.climber, .ambientClimber {
+  offset-path: path("M 480 448 L 790 188");
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+
+}
+.climber {
+  animation: float-ascent 12s 1500ms linear infinite both;
+  animation-play-state: paused;
+}
+.frontLeg, .backLeg { transform-box: fill-box; transform-origin: 50% 0; }
+.frontArm, .backArm { transform-box: fill-box; transform-origin: 50% 12%; }
+.hero:has(.cta:is(:hover, :focus-visible)) .climber {
+  animation-play-state: running;
+}
+.hero:has(.cta:is(:hover, :focus-visible)) .frontLeg { transform: rotate(-9deg); }
+.hero:has(.cta:is(:hover, :focus-visible)) .backLeg { transform: rotate(12deg); }
+.hero:has(.cta:is(:hover, :focus-visible)) .frontArm {
+  animation: float-sway 1800ms ease-in-out infinite alternate;
+}
+.hero:has(.cta:is(:hover, :focus-visible)) .backArm {
+  animation: float-sway 1800ms ease-in-out infinite alternate-reverse;
+}
+@keyframes float-ascent {
+  0% { offset-distance: 0%; opacity: 1; transform: none; }
+  90% { offset-distance: 100%; opacity: 1; transform: none; }
+  96% { offset-distance: 100%; opacity: 0; }
+  97% { offset-distance: 0%; opacity: 0; }
+  100% { offset-distance: 0%; opacity: 1; transform: none; }
+}
+@keyframes float-sway {
+  from { transform: rotate(-12deg); }
+  to { transform: rotate(8deg); }
+}
+
+/* One camera moves all staircases together around the central surface point. */
+.surfaceCamera {
+  will-change: transform;
+  transform-origin: 656px 492px;
+  transform: translateY(140px) scale(1);
+  transition: transform 1500ms cubic-bezier(.2, .65, .35, 1);
+}
+.stairWorld {
+  transform-origin: 656px 492px;
+  transform: scale(.1);
+}
+.ground {
+  will-change: transform;
+  transform: translateY(140px);
+  transition: transform 1500ms cubic-bezier(.2, .65, .35, 1);
+}
+.galaxy {
+  transform-origin: 50% 20%;
+  animation: galaxy-breathe 16s ease-in-out infinite alternate;
+}
+.hero:has(.cta:is(:hover, :focus-visible)) .surfaceCamera {
+  transform: translateY(0) scale(10);
+}
+.hero:has(.cta:is(:hover, :focus-visible)) .ground {
+  transform: translateY(0);
+}
+@keyframes camera-rush {
+  0% { filter: blur(0); }
+  35% { filter: blur(2px); }
+  70% { filter: blur(.5px); }
+  100% { filter: blur(0); }
+}
+@keyframes galaxy-breathe {
+  from { opacity: .45; }
+  to { opacity: .6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .surfaceCamera, .ground { transition: none; }
+  .galaxy, .hero:has(.cta:is(:hover, :focus-visible)) .scene { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .climber,
+  .hero:has(.cta:is(:hover, :focus-visible)) .climber,
+  .hero:has(.cta:is(:hover, :focus-visible)) .frontArm,
+  .hero:has(.cta:is(:hover, :focus-visible)) .backArm {
+    animation: none;
+  }
+}
+
+.floatingFigure {
+  filter: drop-shadow(0 0 0 #ffffff00) drop-shadow(0 0 0 #ffffff00);
+  transition: filter 200ms ease;
+}
+.characterAura {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+/* Bloom only once the 1.5-second camera move has settled. */
+.hero:has(.cta:is(:hover, :focus-visible)) .floatingFigure {
+  filter: drop-shadow(0 0 9px #ffffffdc) drop-shadow(0 0 24px #ffffffa0);
+  transition: filter 650ms 1500ms ease;
+}
+.hero:has(.cta:is(:hover, :focus-visible)) .characterAura {
+  opacity: 1;
+  transition: opacity 650ms 1500ms ease;
+}
+.stairStep {
+  transform: translateY(0);
+  transition: transform 1500ms cubic-bezier(.2, .65, .35, 1);
+}
+.hero:has(.cta:is(:hover, :focus-visible)) .stairStep {
+  transform: translateY(var(--step-lift));
+}
+@media (prefers-reduced-motion: reduce) {
+  .stairStep, .characterAura, .floatingFigure,
+  .hero:has(.cta:is(:hover, :focus-visible)) .characterAura,
+  .hero:has(.cta:is(:hover, :focus-visible)) .floatingFigure { transition: none; }
+}
+
+
+/* The surrounding characters keep ascending independently of the main hover. */
+.ambientClimber {
+  animation: float-ascent var(--float-duration) var(--float-delay) linear infinite both;
+}
+.ambientFigure { opacity: 1; }
+.ambientAura { opacity: .6; }
+@media (prefers-reduced-motion: reduce) {
+  .ambientClimber { animation: none; offset-distance: 45%; }
+}
+
+/* Fade peripheral silhouettes as the shared camera carries them offscreen. */
+.surroundingStaircase { opacity: 1; transition: opacity 600ms ease; }
+.hero:has(.cta:is(:hover, :focus-visible)) .surroundingStaircase {
+  opacity: 0;
+  transition-duration: 450ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .surroundingStaircase,
+  .hero:has(.cta:is(:hover, :focus-visible)) .surroundingStaircase { transition: none; }
+}
+
+@media (max-width: 767px) {
+  .content {
+    justify-items: center;
+    text-align: center;
+    padding-top: clamp(230px, 32svh, 310px);
+  }
+  .intro {
+    justify-self: center;
+    width: min(100%, 330px);
+    margin-inline: auto;
+  }
+  .scene {
+    background: #111214 url("/images/lunar-mobile.webp") center top / cover no-repeat;
+    transform: none;
+    will-change: auto;
+  }
+  .landscape { display: none; }
+  .landscape * { animation: none !important; transition: none !important; }
+  .grain { animation: none; }
+  .hero:has(.cta:is(:hover, :focus-visible)) .scene { animation: none; }
+  .cta:is(:hover, :focus-visible) .ctaLabel { opacity: 1; transform: none; }
+  .cta:is(:hover, :focus-visible) .ctaArrow { width: 58px; }
+  .cta:is(:hover, :focus-visible) .ctaArrow svg { transform: none; }
+}
+
+/* Keep the ground shadows anchored while each staircase hovers independently. */
+.hoveringStaircase {
+  animation: staircase-hover var(--float-duration, 8s) var(--float-delay, 0s) ease-in-out infinite;
+}
+@keyframes staircase-hover {
+  0%, 100% { transform: translateY(-16px); }
+  50% { transform: translateY(-25px); }
+}
+.star {
+  animation: star-twinkle var(--twinkle-duration) var(--twinkle-delay) linear infinite;
+}
+@keyframes star-twinkle {
+  0%, 86%, 100% { opacity: .15; }
+  91% { opacity: .4; }
+  94% { opacity: 1; }
+  97% { opacity: .35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hoveringStaircase { animation: none; transform: translateY(-20px); }
+  .star { animation: none; }
+}

@@ -2,12 +2,19 @@
 
 import { useRef } from "react";
 
+interface DurationDialProps {
+  minutes: number
+  onChange: (value: number) => void
+}
+
 const MINUTES_MIN = 1;
 export const MINUTES_MAX = 180;
 const TICK_WIDTH = 16;
 const TICKS = Array.from({ length: MINUTES_MAX }, (_, index) => index + 1);
 
-export default function DurationDial({ minutes, onChange }: { minutes: number; onChange: (value: number) => void }) {
+
+
+export default function DurationDial({ minutes, onChange }: DurationDialProps) {
   const drag = useRef<{ x: number; minutes: number; moved: boolean } | null>(null);
   const audio = useRef<AudioContext | null>(null);
 
@@ -18,7 +25,7 @@ export default function DurationDial({ minutes, onChange }: { minutes: number; o
 
     try {
       const context = audio.current ??= new AudioContext();
-      if (context.state === "suspended") void context.resume().catch(() => {});
+      if (context.state === "suspended") void context.resume().catch(() => { });
       const click = context.createOscillator();
       const volume = context.createGain();
       const now = context.currentTime;
