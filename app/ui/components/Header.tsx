@@ -78,7 +78,7 @@ export default function Header() {
                     shadow-lg z-50 overflow-hidden transition-all duration-300 ease-in-out
                     ${menuOpen ? "max-h-40 opacity-100" : "pointer-events-none max-h-0 opacity-0 border-transparent shadow-none"}`}
       >
-        <div className="px-6 py-4 flex flex-col gap-3">
+        <div className="px-6 py-4 flex flex-col gap-3 text-neutral-900">
           {["Log in", "Sign up"].map((label) => (
             <button key={label} type="button" aria-haspopup="dialog" onClick={() => openAuth(label === "Log in" ? "login" : "signup")} className={`${styles.authButton} ${label === "Log in" ? styles.login : styles.signup}`}>
               {label}

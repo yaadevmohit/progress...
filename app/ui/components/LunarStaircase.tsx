@@ -88,7 +88,7 @@ function StairAssembly({ ambient = false }: { ambient?: boolean }) {
 
 export default function LunarStaircase() {
   return (
-    <svg className={styles.lunarScene} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <svg data-lunar-scene className={styles.lunarScene} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
         <linearGradient id="lunar-sky" x2="0" y2="1">
           <stop stopColor="#08090b" />

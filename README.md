@@ -35,3 +35,5 @@ At the root, `package.json` lists scripts and dependencies, and `package-lock.js
 Saved sessions survive a refresh in the same browser. An active timer only lives in memory and resets on refresh. The greeting, skill totals, streaks, and heatmap still use mock data, so logging a session only updates Recent Sessions. Log in and Sign up open blue-and-white preview forms in `AuthDialog.tsx`, with email/password validation and Google buttons. Authentication is not connected, and credentials are not saved. View all is a visual placeholder.
 
 On screens below 768px, the homepage centers its copy and uses `public/images/lunar-mobile.webp`, a static close-up of the scene. `ResponsiveLunarScene.tsx` loads the animated SVG only on wider screens; mobile also disables animated grain and hover effects.
+
+`HeroViewport.tsx` intercepts desktop pinch/Ctrl+wheel gestures over the hero and zooms the artwork around the pointer. It prevents browser zoom for those gestures, leaves normal scrolling alone, and provides Reset view. The mobile still keeps normal browser gestures.

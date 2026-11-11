@@ -342,3 +342,38 @@
   .hoveringStaircase { animation: none; transform: translateY(-20px); }
   .star { animation: none; }
 }
+
+/* Manual gestures transform only the artwork; text and navigation remain fixed. */
+.gestureZoom {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  transform: translate3d(var(--gesture-x, 0px), var(--gesture-y, 0px), 0) scale(var(--gesture-scale, 1));
+  transition: transform 80ms ease-out;
+  will-change: transform;
+}
+.hero[data-user-zoom] .surfaceCamera,
+.hero[data-user-zoom] .ground {
+  transform: translateY(140px) scale(1) !important;
+  transition: none;
+}
+.hero[data-user-zoom] .surroundingStaircase { opacity: 1 !important; }
+.hero[data-user-zoom] .scene { animation: none !important; }
+.resetView {
+  position: absolute;
+  top: 94px;
+  right: 24px;
+  z-index: 3;
+  cursor: pointer;
+  border: 1px solid #ffffff40;
+  border-radius: 12px;
+  background: #141820b3;
+  padding: 9px 14px;
+  color: #fff;
+  font-size: 13px;
+}
+.resetView:hover { background: #242a35; }
+.resetView:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .gestureZoom { transition: none; }
+}
