@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, X, MoveRight } from "lucide-react";
+import styles from "./Header.module.css";
 import LogSession from "./LogSession";
 import AuthDialog, { type AuthMode } from "./AuthDialog";
 
 export default function Header() {
+  const pathname = usePathname();
+  const isDashboard = pathname === "/dashboard";
+  const isHome = pathname === "/";
   const [menuOpen, setMenuOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
 
@@ -15,7 +20,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b border-black/10 bg-transparent px-3 py-3 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6">
+    <header className={`sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b bg-transparent px-3 py-3 ${isHome ? "border-white/20 text-white" : "border-black/10 text-black"} sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6`}>
       <nav className="mx-auto flex max-w-6xl items-center justify-between">
 
         {/* Logo */}
@@ -25,15 +30,14 @@ export default function Header() {
 
         {/* Right-side actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <LogSession />
+          {isDashboard && <LogSession />}
           {/* Desktop: Login & Sign Up visible inline */}
-          <div className="hidden md:flex flex-row gap-2 border-l border-neutral-200 pl-2">
+          <div className={`hidden flex-row gap-2 md:flex ${isDashboard ? "border-l border-neutral-200 pl-2" : ""}`}>
             <button
               type="button"
               aria-haspopup="dialog"
               onClick={() => openAuth("login")}
-              className="text-sm font-medium text-neutral-600 hover:text-black
-                       px-3 py-2 rounded-xl transition-colors cursor-pointer"
+              className={`${styles.authButton} ${styles.login}`}
             >
               Log in
             </button>
@@ -41,14 +45,7 @@ export default function Header() {
               type="button"
               aria-haspopup="dialog"
               onClick={() => openAuth("signup")}
-              className="group flex gap-2 items-center 
-                       bg-black w-fit mx-auto 
-                       text-white px-4 py-3 rounded-2xl 
-                       cursor-pointer
-                       hover:bg-black/80 
-                       text-sm
-                       font-bold
-                       "
+              className={`group ${styles.authButton} ${styles.signup}`}
             >
               Sign up
               <div className="relative h-5 w-5 text-sm font-bold overflow-hidden">
@@ -63,8 +60,7 @@ export default function Header() {
           {/* Mobile: Hamburger toggle */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-xl text-neutral-600 hover:bg-neutral-100
-                       transition-colors cursor-pointer"
+            className={`md:hidden cursor-pointer rounded-xl p-2 transition-colors ${isHome ? "text-white hover:bg-white/10" : "text-neutral-600 hover:bg-neutral-100"}`}
             aria-label="Toggle menu"
           >
             {menuOpen
@@ -84,7 +80,7 @@ export default function Header() {
       >
         <div className="px-6 py-4 flex flex-col gap-3">
           {["Log in", "Sign up"].map((label) => (
-            <button key={label} type="button" aria-haspopup="dialog" onClick={() => openAuth(label === "Log in" ? "login" : "signup")} className="cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-gray-100 hover:text-black">
+            <button key={label} type="button" aria-haspopup="dialog" onClick={() => openAuth(label === "Log in" ? "login" : "signup")} className={`${styles.authButton} ${label === "Log in" ? styles.login : styles.signup}`}>
               {label}
             </button>
           ))}

@@ -24,9 +24,12 @@ const DISTANT_STAIRS = [
 ];
 
 function starTiming(index: number) {
+  const duration = 5 + (index * 367 % 1001) / 100;
+  // Start at different points in the cycle, including several bright glints immediately.
+  const phase = index % 17 === 0 ? .14 : (index * 0.61803398875) % 1;
   return {
-    "--twinkle-duration": `${5 + (index * 367 % 1001) / 100}s`,
-    "--twinkle-delay": `-${(index * 541 % 1700) / 100}s`,
+    "--twinkle-duration": `${duration}s`,
+    "--twinkle-delay": `-${duration * phase}s`,
   } as React.CSSProperties;
 }
 
@@ -91,10 +94,6 @@ export default function LunarStaircase() {
           <stop stopColor="#08090b" />
           <stop offset="1" stopColor="#303135" />
         </linearGradient>
-        <radialGradient id="lunar-haze">
-          <stop stopColor="#e3e4e6" stopOpacity=".18" />
-          <stop offset="1" stopColor="#bfc0c2" stopOpacity="0" />
-        </radialGradient>
         <linearGradient id="lunar-ground" x2=".3" y2="1">
           <stop stopColor="#77787b" />
           <stop offset=".5" stopColor="#36373a" />
@@ -114,23 +113,14 @@ export default function LunarStaircase() {
           <stop offset="1" stopColor="#ddd" stopOpacity=".1" />
         </radialGradient>
         <filter id="soft-shadow"><feGaussianBlur stdDeviation="9" /></filter>
-        <linearGradient id="navbar-fade" x2="0" y2="1">
+        <linearGradient id="sky-photo-fade" x2="0" y2="1">
           <stop stopColor="#fff" />
-          <stop offset=".19" stopColor="#fff" stopOpacity=".98" />
-          <stop offset=".55" stopColor="#e4e5e5" stopOpacity=".2" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          <stop offset=".65" stopColor="#fff" />
+          <stop offset="1" stopColor="#000" />
         </linearGradient>
-        <radialGradient id="galaxy-core">
-          <stop stopColor="#fff" stopOpacity=".5" />
-          <stop offset=".32" stopColor="#f1f2f2" stopOpacity=".28" />
-          <stop offset=".7" stopColor="#c5c7c9" stopOpacity=".07" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
-        </radialGradient>
-        <filter id="galaxy-dust" x="-20%" y="-80%" width="140%" height="260%">
-          <feTurbulence type="fractalNoise" baseFrequency=".009 .027" numOctaves="4" seed="18" result="noise" />
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="100" />
-          <feGaussianBlur stdDeviation="2" />
-        </filter>
+        <mask id="sky-photo-mask">
+          <path d="M0 0h1440v650H0z" fill="url(#sky-photo-fade)" />
+        </mask>
         <radialGradient id="character-aura">
           <stop stopColor="#fff" stopOpacity=".7" />
           <stop offset=".5" stopColor="#fff" stopOpacity=".28" />
@@ -139,21 +129,22 @@ export default function LunarStaircase() {
       </defs>
 
       <path fill="url(#lunar-sky)" d="M0 0h1440v900H0z" />
-      <ellipse cx="780" cy="200" rx="600" ry="260" fill="url(#lunar-haze)" />
+      <g>
+      <image href="/images/milky-way.webp" width="1440" height="650" preserveAspectRatio="xMidYMid slice" opacity=".52" mask="url(#sky-photo-mask)" />
       <g className={styles.galaxy}>
-        <ellipse cx="730" cy="180" rx="950" ry="190" fill="url(#galaxy-core)" transform="rotate(-14 730 180)" filter="url(#galaxy-dust)" />
-        <ellipse cx="630" cy="150" rx="700" ry="66" fill="url(#galaxy-core)" transform="rotate(-14 630 150)" filter="url(#galaxy-dust)" />
         {Array.from({ length: 380 }, (_, i) => {
           const x = (i * 173.31 + 81) % 1440;
           const spread = ((i * 71.77) % 1 - .5) * ((i % 4) * 55 + 65);
           const y = 290 - x * .16 + spread;
-          return <circle key={i} className={styles.star} style={starTiming(i)} cx={x} cy={y} r={i % 17 === 0 ? 1.3 : .35 + (i % 4) * .15} fill="#fff" opacity={.25 + (i % 7) * .1} />;
+          return <circle key={i} className={`${styles.star} ${i % 13 === 0 ? styles.glintStar : ""}`} style={starTiming(i)} cx={x} cy={y} r={i % 17 === 0 ? 1.3 : .35 + (i % 4) * .15} fill="#fff" opacity={.25 + (i % 7) * .1} />;
         })}
       </g>
+      <g>
       {Array.from({ length: 130 }, (_, i) => (
-        <circle key={i} className={styles.star} style={starTiming(i + 900)} cx={(i * 179.3 + 39) % 1440} cy={(i * 73.7 + 33) % 580} r={i % 9 === 0 ? 1 : .5} fill="#fff" opacity={.15 + (i % 5) * .09} />
+        <circle key={i} className={`${styles.star} ${i % 11 === 0 ? styles.glintStar : ""}`} style={starTiming(i + 900)} cx={(i * 179.3 + 39) % 1440} cy={(i * 73.7 + 33) % 580} r={i % 9 === 0 ? 1 : .5} fill="#fff" opacity={.15 + (i % 5) * .09} />
       ))}
-      <path fill="url(#navbar-fade)" d="M0 0h1440v440H0z" />
+      </g>
+      </g>
       <g className={styles.ground}>
       <path d="M0 441Q130 405 250 445T510 448Q650 427 780 440T1020 425T1250 420T1440 444V900H0Z" fill="url(#lunar-ground)" />
       <path d="M0 441Q130 405 250 445T510 448Q650 427 780 440T1020 425T1250 420T1440 444" fill="none" stroke="#b9bbbd" strokeOpacity=".15" />

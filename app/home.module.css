@@ -211,7 +211,7 @@
 }
 .galaxy {
   transform-origin: 50% 20%;
-  animation: galaxy-breathe 16s ease-in-out infinite alternate;
+  opacity: .95;
 }
 .hero:has(.cta:is(:hover, :focus-visible)) .surfaceCamera {
   transform: translateY(0) scale(10);
@@ -224,10 +224,6 @@
   35% { filter: blur(2px); }
   70% { filter: blur(.5px); }
   100% { filter: blur(0); }
-}
-@keyframes galaxy-breathe {
-  from { opacity: .45; }
-  to { opacity: .6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .surfaceCamera, .ground { transition: none; }
@@ -288,7 +284,7 @@
 .surroundingStaircase { opacity: 1; transition: opacity 600ms ease; }
 .hero:has(.cta:is(:hover, :focus-visible)) .surroundingStaircase {
   opacity: 0;
-  transition-duration: 450ms;
+  transition-duration: 1200ms;
 }
 @media (prefers-reduced-motion: reduce) {
   .surroundingStaircase,
@@ -332,11 +328,16 @@
   animation: star-twinkle var(--twinkle-duration) var(--twinkle-delay) linear infinite;
 }
 @keyframes star-twinkle {
-  0%, 86%, 100% { opacity: .15; }
-  91% { opacity: .4; }
-  94% { opacity: 1; }
-  97% { opacity: .35; }
+  0%, 9%, 23%, 65%, 82%, 100% { opacity: .12; }
+  12% { opacity: .5; }
+  14% { opacity: 1; }
+  17% { opacity: .35; }
+  20% { opacity: .6; }
+  70% { opacity: .4; }
+  74% { opacity: 1; }
+  77% { opacity: .25; }
 }
+.glintStar { filter: drop-shadow(0 0 2px #fff); }
 @media (prefers-reduced-motion: reduce) {
   .hoveringStaircase { animation: none; transform: translateY(-20px); }
   .star { animation: none; }

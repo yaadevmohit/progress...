@@ -1,0 +1,5 @@
+Generated with the built-in image_gen tool; converted to WebP for the website.
+Final asset: milky-way.webp.
+
+Prompt:
+Use case: photorealistic-natural. Asset type: panoramic background texture for a monochrome space website. A scientifically plausible astrophotography photograph of the Milky Way from an airless lunar sky, BLACK AND WHITE ONLY, no color. Wide landscape 16:9 composition. A delicate diagonal galactic band crosses from upper left toward upper right with irregular intricate dark interstellar dust lanes, densely clustered tiny stars, a few slightly brighter white pinpoints, subtle long exposure luminous star clouds. Natural photographic contrast, charcoal black deep space remains dominant across lower half, restrained whites and no blown out giant bright areas. Fine photographic grain, exceptionally realistic observatory photography, no stylized smoke, no swirling fantasy nebula, no large stars, no planets, no horizon, no ground, no moon, no objects, no text, no graphic design. Uppermost edge softly illuminated silver-grey fading into dark lower half, suitable for blending into a white website navbar. Only a realistic monochrome galaxy starfield.
