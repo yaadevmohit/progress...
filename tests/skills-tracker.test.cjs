@@ -313,3 +313,90 @@ test("donut segments represent actual time, exclude unpractised skills and cover
     0,
   );
 });
+
+test("activity scales grow with local history, including an annual scale after twelve calendar months", () => {
+  assert.equal(
+    JSON.stringify(model.activityHistory([], [], "2026-11-14").views),
+    '["weeks"]',
+  );
+  assert.equal(
+    JSON.stringify(
+      model.activityHistory([], [session("2026-10-31")], "2026-11-14").views,
+    ),
+    '["weeks","months"]',
+  );
+  assert.equal(
+    JSON.stringify(
+      model.activityHistory([], [session("2025-12-31")], "2026-01-01").views,
+    ),
+    '["weeks","months"]',
+  );
+  assert.equal(
+    JSON.stringify(
+      model.activityHistory([], [session("2025-11-14")], "2026-11-14").views,
+    ),
+    '["weeks","months","years"]',
+  );
+  const oldSkill = { ...skill("a", 0), createdAt: "2025-10-01T12:00:00Z" };
+  assert.equal(
+    model.activityHistory([oldSkill], [], "2026-11-14").views.length,
+    3,
+  );
+  assert.equal(
+    model.activityHistory([], [session("2099-01-01")], "2026-11-14").views
+      .length,
+    1,
+  );
+});
+
+test("monthly and annual activity aggregate real sessions across year boundaries", () => {
+  const sessions = [
+    session("2025-12-31", "a", 1500),
+    session("2026-01-01", "b", 2700),
+    session("2026-01-01", "a", 600),
+    session("2026-11-14", "a", 900),
+  ];
+  const monthly = model.activityTimeline([], sessions, "2026-11-14", "months");
+  assert.equal(monthly.buckets.length, 12);
+  assert.equal(
+    monthly.buckets.find((b) => b.start === "2026-01-01").seconds,
+    3300,
+  );
+  assert.equal(
+    monthly.buckets.find((b) => b.start === "2026-01-01").activeDays,
+    1,
+  );
+  const annual = model.activityTimeline([], sessions, "2026-11-14", "years");
+  assert.equal(annual.buckets.length, 2);
+  assert.equal(annual.buckets[0].seconds, 1500);
+  assert.equal(annual.buckets[1].seconds, 4200);
+  assert.equal(
+    annual.buckets.reduce((sum, b) => sum + b.count, 0),
+    4,
+  );
+});
+
+test("activity navigation cannot pass local history or move into future periods", () => {
+  const sessions = [session("2026-10-31")];
+  const earliest = model.activityTimeline(
+    [],
+    sessions,
+    "2026-11-14",
+    "months",
+    -100,
+  );
+  assert.equal(earliest.offset, -1);
+  assert.equal(earliest.start, "2026-10-01");
+  const future = model.activityTimeline(
+    [],
+    sessions,
+    "2026-11-14",
+    "weeks",
+    100,
+  );
+  assert.equal(future.offset, 0);
+  assert.equal(future.end, "2026-11-30");
+  const empty = model.activityTimeline([], [], "2026-11-14", "weeks", -20);
+  assert.equal(empty.minOffset, 0);
+  assert.equal(empty.start, "2026-11-01");
+});

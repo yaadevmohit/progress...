@@ -33,7 +33,7 @@ The six-skill limit is per user, not a limit on sessions. Database checks cannot
 - **Most practised:** the skill with the largest total. Ties use the oldest skill, then its slot.
 - **Overall streak:** consecutive distinct `activity_date` values across all skills. Multiple sessions on one day count once. Yesterday's streak stays alive until the end of today; after a missed full day it resets.
 - **Individual streak:** the same calculation filtered to one skill.
-- **Weekly heatmap:** sum learning time for each Monday–Sunday week. The displayed month boundaries clip the first and last weeks; tooltips show the actual interval. With no sessions the current month appears; otherwise the current and previous two months appear. Arrow controls move the window by one month.
+- **Weekly heatmap:** sum learning time for each Monday–Sunday week. The displayed month boundaries clip the first and last weeks; tooltips show the actual interval. With no sessions the current month appears; otherwise the current and previous two months appear. Arrow controls move the window by one month. The monthly scale becomes available when the history spans a calendar-month boundary, and the annual scale after twelve calendar months. These scales aggregate actual time by month and year; clicking a bucket returns to a finer scale. Navigation is bounded by the earliest saved skill creation date or logged activity date, since there is no account creation date yet.
 
 Dates are calendar dates, while timestamps are instants. Logging uses the browser's local date and records its time zone. A timer records the scheduled completion date in the browser's current local time; an early finish records actual elapsed time (minimum one minute). Timers span reloads and are recovered when the tracker is reopened. If a timer crosses midnight, its time is assigned to the completion day rather than split between days.
 
@@ -41,7 +41,8 @@ Dates are calendar dates, while timestamps are instants. Logging uses the browse
 
 | File | Responsibility |
 | --- | --- |
-| `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, weekly heatmap, greeting streak and timer |
+| `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, greeting streak and timer |
+| `app/skills-tracker/ActivityChart.tsx` | Adaptive weekly, monthly and annual activity scales with drill-down and bounded navigation |
 | `app/skills-tracker/PracticeDonut.tsx` | Time distribution across skills, with colours matched to card dots |
 | `app/skills-tracker/StreakFlame.tsx` | Active streak glow and increase animation, respecting reduced motion |
 | `app/skills-tracker/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |

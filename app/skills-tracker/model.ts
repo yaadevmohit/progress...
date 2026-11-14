@@ -340,3 +340,104 @@ export function practiceBreakdown(
       return segment;
     });
 }
+
+export type ActivityView = "weeks" | "months" | "years";
+export function activityHistory(
+  skills: Skill[],
+  sessions: LearningSession[],
+  today: string,
+) {
+  const dates = [
+    ...skills.map((skill) => localDay(new Date(skill.createdAt))),
+    ...sessions.map((session) => session.activityDate),
+  ]
+    .filter((day) => validDay(day) && day <= today)
+    .sort();
+  const first = dates[0] ?? today;
+  const months =
+    (Number(today.slice(0, 4)) - Number(first.slice(0, 4))) * 12 +
+    Number(today.slice(5, 7)) -
+    Number(first.slice(5, 7));
+  const views: ActivityView[] = ["weeks"];
+  if (months >= 1) views.push("months");
+  if (months >= 12) views.push("years");
+  return { first, views };
+}
+export function activityTimeline(
+  skills: Skill[],
+  sessions: LearningSession[],
+  today: string,
+  view: ActivityView,
+  offset = 0,
+) {
+  const { first } = activityHistory(skills, sessions, today);
+  const monthIndex = (day: string) =>
+    Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7)) - 1;
+  const minOffset =
+    view === "years"
+      ? Number(first.slice(0, 4)) - Number(today.slice(0, 4))
+      : monthIndex(first) - monthIndex(today);
+  const safeOffset = Math.min(0, Math.max(minOffset, offset));
+  if (view === "weeks") {
+    const weekly = weeklyActivity(sessions, today, safeOffset);
+    return { ...weekly, buckets: weekly.weeks, minOffset, offset: safeOffset };
+  }
+  const anchor = new Date(today + "T12:00:00Z");
+  anchor.setUTCDate(1);
+  if (view === "years") {
+    anchor.setUTCMonth(0);
+    anchor.setUTCFullYear(anchor.getUTCFullYear() + safeOffset);
+  } else anchor.setUTCMonth(anchor.getUTCMonth() + safeOffset);
+  const from = new Date(anchor);
+  if (view === "years")
+    from.setUTCFullYear(
+      Math.max(Number(first.slice(0, 4)), anchor.getUTCFullYear() - 11),
+    );
+  else
+    from.setUTCMonth(
+      from.getUTCMonth() -
+        Math.min(
+          11,
+          monthIndex(anchor.toISOString().slice(0, 10)) - monthIndex(first),
+        ),
+    );
+  const buckets: {
+    start: string;
+    end: string;
+    seconds: number;
+    count: number;
+    activeDays: number;
+  }[] = [];
+  const cursor = new Date(from);
+  while (cursor <= anchor) {
+    const start = cursor.toISOString().slice(0, 10);
+    const next = new Date(cursor);
+    if (view === "years") next.setUTCFullYear(next.getUTCFullYear() + 1);
+    else next.setUTCMonth(next.getUTCMonth() + 1);
+    const end = shiftDay(next.toISOString().slice(0, 10), -1);
+    const entries = sessions.filter(
+      (session) =>
+        session.activityDate >= start &&
+        session.activityDate <= end &&
+        session.activityDate <= today,
+    );
+    buckets.push({
+      start,
+      end,
+      seconds: entries.reduce(
+        (sum, session) => sum + session.durationSeconds,
+        0,
+      ),
+      count: entries.length,
+      activeDays: new Set(entries.map((session) => session.activityDate)).size,
+    });
+    cursor.setTime(next.getTime());
+  }
+  return {
+    start: buckets[0].start,
+    end: buckets[buckets.length - 1].end,
+    buckets,
+    minOffset,
+    offset: safeOffset,
+  };
+}

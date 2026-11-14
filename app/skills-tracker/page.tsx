@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Download, Plus, X } from "lucide-react";
+import { Download, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
+import ActivityChart from "./ActivityChart";
 import PracticeDonut from "./PracticeDonut";
 import StreakFlame from "./StreakFlame";
 import SkillResources from "./SkillResources";
@@ -16,9 +17,7 @@ import {
   mostPractised,
   REMINDER_INTERVAL,
   skillStats,
-  weeklyActivity,
   type ActiveTimer,
-  type LearningSession,
 } from "./model";
 import {
   cancelTimer,
@@ -35,108 +34,6 @@ function dateLabel(day: string) {
     day: "numeric",
     timeZone: "UTC",
   });
-}
-function Heatmap({
-  sessions,
-  today,
-}: {
-  sessions: LearningSession[];
-  today: string;
-}) {
-  const [offset, setOffset] = useState(0);
-  const { start, end, weeks } = weeklyActivity(sessions, today, offset);
-  const max = Math.max(...weeks.map((w) => w.seconds), 1),
-    colors = ["#ecefed", "#d1fae5", "#6ee7b7", "#34d399", "#059669"];
-  const month = (day: string) =>
-    new Date(day + "T12:00:00Z").toLocaleDateString(undefined, {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    });
-  return (
-    <section
-      className={`${styles.panel} ${styles.activity}`}
-      aria-labelledby="activity-title"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 id="activity-title" className="text-xl font-bold">
-            Activity
-          </h2>
-          <p className="mt-1 text-xs font-semibold text-neutral-500">
-            {sessions.length
-              ? `${dateLabel(start)} – ${dateLabel(end)}, ${end.slice(0, 4)}`
-              : month(start)}{" "}
-            · each block is one week
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            aria-label="Previous month"
-            onClick={() => setOffset(offset - 1)}
-            className={styles.icon}
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <button
-            onClick={() => setOffset(0)}
-            className="rounded-lg px-2 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50"
-          >
-            Today
-          </button>
-          <button
-            aria-label="Next month"
-            disabled={offset === 0}
-            onClick={() => setOffset(offset + 1)}
-            className={styles.icon}
-          >
-            <ArrowRight size={16} />
-          </button>
-        </div>
-      </div>
-      <div
-        className={styles.weeks}
-        key={`${start}-${end}-${sessions.length}`}
-        style={{ gridTemplateColumns: `repeat(${weeks.length},minmax(0,1fr))` }}
-      >
-        {weeks.map((week) => {
-          const level = week.seconds
-            ? Math.max(1, Math.ceil((week.seconds / max) * 4))
-            : 0;
-          const description = `${dateLabel(week.start)} – ${dateLabel(week.end)}: ${week.count} ${week.count === 1 ? "session" : "sessions"}, ${durationLabel(week.seconds)}, ${week.activeDays} active ${week.activeDays === 1 ? "day" : "days"}`;
-          return (
-            <div key={week.start} className={styles.week}>
-              <button
-                type="button"
-                className={styles.tile}
-                aria-label={description}
-                style={{ backgroundColor: colors[level] }}
-              >
-                <span role="tooltip" className={styles.tooltip}>
-                  {description}
-                </span>
-              </button>
-              <span className="mt-2 block text-center text-[10px] text-neutral-500">
-                {new Date(week.start + "T12:00:00Z").getUTCDate()}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-auto flex justify-end gap-1.5 text-[11px] font-semibold text-neutral-500">
-        <span className="mr-1">Less</span>
-        {colors.map((color) => (
-          <span
-            key={color}
-            aria-hidden="true"
-            className="h-3 w-3 rounded-sm"
-            style={{ backgroundColor: color }}
-          />
-        ))}
-        <span className="ml-1">More</span>
-      </div>
-    </section>
-  );
 }
 function Timer({
   timer,
@@ -404,10 +301,7 @@ export default function SkillsTracker() {
               )}
             </div>
             <div className={styles.right}>
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-neutral-700">
-                  Skills I’m learning
-                </h2>
+              <div className="flex items-center justify-end">
                 <span className="text-xs font-semibold text-neutral-400">
                   {state.skills.length} / {MAX_SKILLS}
                 </span>
@@ -478,7 +372,11 @@ export default function SkillsTracker() {
                 })}
               </div>
               {ready && now ? (
-                <Heatmap sessions={state.sessions} today={today} />
+                <ActivityChart
+                  skills={state.skills}
+                  sessions={state.sessions}
+                  today={today}
+                />
               ) : (
                 <section
                   className={`${styles.panel} ${styles.activity}`}

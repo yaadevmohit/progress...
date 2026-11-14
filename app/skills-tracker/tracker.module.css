@@ -377,3 +377,40 @@
     transition: none;
   }
 }
+
+.activityViews {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: #f3f6f4;
+  border-radius: 10px;
+}
+.activityViews button {
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: #64746b;
+  font-size: 11px;
+  font-weight: 800;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    box-shadow 0.2s;
+}
+.activityViews button[aria-pressed="true"] {
+  background: white;
+  color: #047857;
+  box-shadow: 0 1px 4px #052e1610;
+}
+.activityZoom {
+  animation: activityZoom 0.35s ease both;
+}
+@keyframes activityZoom {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
