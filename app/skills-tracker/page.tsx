@@ -218,14 +218,6 @@ export default function SkillsTracker() {
                 Make a little room for what you want to learn.
               </p>
             </div>
-            <div
-              aria-live="polite"
-              aria-atomic="true"
-              className="flex items-center gap-2 rounded-full bg-[var(--tracker-soft)] px-4 py-2 text-sm font-bold text-[var(--tracker-ink)]"
-            >
-              <StreakFlame count={streak} ready={ready && now !== null} />
-              {streak}-day overall streak
-            </div>
           </div>
           {(storageError || error) && (
             <div
@@ -280,21 +272,74 @@ export default function SkillsTracker() {
                 <h2 className="break-words text-2xl font-bold text-[var(--tracker-ink)]">
                   {leader?.name || "Your next chapter"}
                 </h2>
-                <p className="mt-2 text-sm font-semibold leading-relaxed text-[var(--tracker-muted)]">
+                <p
+                  className={`${styles.leaderIntro} mt-2 text-sm font-semibold leading-relaxed text-[var(--tracker-muted)]`}
+                >
                   {leader
                     ? `${durationLabel(leader.seconds)} · ${share}% of your learning time.`
                     : "Add a skill and log your first session. Your most-practised skill will appear here."}
                 </p>
-                <div className="mt-auto flex items-center gap-2 pt-5 text-sm font-bold text-[var(--tracker-ink)]">
-                  <StreakFlame
-                    key={leader?.id ?? "empty"}
-                    count={leader?.streak ?? 0}
-                    ready={ready && now !== null}
-                    size={17}
-                  />
-                  {leader
-                    ? `${leader.streak}-day skill streak`
-                    : "Progress starts with one session"}
+                <div className={styles.leaderDetails}>
+                  <div className={styles.latestSession}>
+                    <p className="text-xs font-bold text-[var(--tracker-muted)]">
+                      Latest session
+                    </p>
+                    {leader?.lastSession ? (
+                      <>
+                        <p className="mt-1 text-sm font-bold">
+                          {dateLabel(leader.lastSession.activityDate)},{" "}
+                          {leader.lastSession.activityDate.slice(0, 4)}{" "}
+                          <span className="text-[var(--tracker-muted)]">·</span>{" "}
+                          {durationLabel(leader.lastSession.durationSeconds)}
+                        </p>
+                        {leader.lastSession.notes && (
+                          <p
+                            className={`${styles.sessionNotes} mt-1 line-clamp-2 break-words text-xs text-[var(--tracker-muted)]`}
+                          >
+                            {leader.lastSession.notes}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-sm text-[var(--tracker-muted)]">
+                        Your first session will appear here.
+                      </p>
+                    )}
+                  </div>
+                  <div className={styles.streakStats}>
+                    <div
+                      aria-live="polite"
+                      aria-atomic="true"
+                      className={styles.streakStat}
+                    >
+                      <StreakFlame
+                        count={streak}
+                        ready={ready && now !== null}
+                        size={20}
+                      />
+                      <div>
+                        <strong>
+                          {streak} {streak === 1 ? "day" : "days"}
+                        </strong>
+                        <span>Overall streak</span>
+                      </div>
+                    </div>
+                    <div className={styles.streakStat}>
+                      <StreakFlame
+                        key={leader?.id ?? "empty"}
+                        count={leader?.streak ?? 0}
+                        ready={ready && now !== null}
+                        size={20}
+                      />
+                      <div>
+                        <strong>
+                          {leader?.streak ?? 0}{" "}
+                          {(leader?.streak ?? 0) === 1 ? "day" : "days"}
+                        </strong>
+                        <span>Skill streak</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
               {timer && now && (
@@ -342,7 +387,12 @@ export default function SkillsTracker() {
                             {durationLabel(skill.seconds)}
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-1">
-                            <span className="text-xs font-semibold text-[var(--tracker-ink)]">
+                            <span className="flex items-center gap-1 text-xs font-semibold text-[var(--tracker-ink)]">
+                              <StreakFlame
+                                count={skill.streak}
+                                ready={ready && now !== null}
+                                size={14}
+                              />
                               {skill.streak}-day streak
                             </span>
                             <div className="flex items-center gap-1">
