@@ -1,5 +1,7 @@
 import { JobHuntProfileProvider } from "./job-hunt/ProfileContext";
 import type { Metadata } from "next";
+import Script from "next/script";
+import { TRACKER_THEME_SCRIPT } from "./skills-tracker/theme-config";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AmbientAudioProvider } from "./ui/components/AmbientAudio";
@@ -26,8 +28,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${nunito.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${nunito.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">
+        <Script id="skills-tracker-theme" strategy="beforeInteractive">
+          {TRACKER_THEME_SCRIPT}
+        </Script>
         <AmbientAudioProvider>
         <JobHuntProfileProvider>
         <SessionTimerProvider>

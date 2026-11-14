@@ -42,9 +42,9 @@ export default function DurationDial({ minutes, onChange }: DurationDialProps) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-center">
-      <div className="text-xl font-semibold tabular-nums text-emerald-950" aria-hidden="true">
-        {minutes} <span className="text-xs font-medium text-emerald-800">min</span>
+    <div className="mt-3 rounded-xl border border-[var(--dial-border,#d1fae5)] bg-[var(--dial-surface,#ecfdf599)] px-3 py-2 text-center">
+      <div className="text-xl font-semibold tabular-nums text-[var(--dial-ink,#022c22)]" aria-hidden="true">
+        {minutes} <span className="text-xs font-medium text-[var(--dial-ink,#065f46)]">min</span>
       </div>
       <div
         role="slider"
@@ -54,7 +54,7 @@ export default function DurationDial({ minutes, onChange }: DurationDialProps) {
         aria-valuemax={MINUTES_MAX}
         aria-valuenow={minutes}
         aria-valuetext={`${minutes} minutes`}
-        className="relative h-9 touch-none cursor-ew-resize overflow-hidden rounded-md select-none focus-visible:outline-2 focus-visible:outline-emerald-700"
+        className="relative h-9 touch-none cursor-ew-resize overflow-hidden rounded-md select-none focus-visible:outline-2 focus-visible:outline-[var(--dial-accent,#047857)]"
         onKeyDown={(event) => {
           const values: Record<string, number> = {
             ArrowLeft: minutes - 1,
@@ -95,11 +95,11 @@ export default function DurationDial({ minutes, onChange }: DurationDialProps) {
         >
           {TICKS.map((tick) => (
             <span key={tick} className="grid w-4 shrink-0 justify-items-center">
-              <span className={`w-0.5 rounded-full bg-emerald-800/30 ${tick % 5 === 0 ? "h-4" : "h-2.5"}`} />
+              <span className={`w-0.5 rounded-full bg-[var(--dial-tick,#065f464d)] ${tick % 5 === 0 ? "h-4" : "h-2.5"}`} />
             </span>
           ))}
         </div>
-        <span aria-hidden="true" className="pointer-events-none absolute bottom-1 left-1/2 h-6 w-1 -translate-x-1/2 rounded-full bg-emerald-600" />
+        <span aria-hidden="true" className="pointer-events-none absolute bottom-1 left-1/2 h-6 w-1 -translate-x-1/2 rounded-full bg-[var(--dial-accent,#059669)]" />
       </div>
     </div>
   );

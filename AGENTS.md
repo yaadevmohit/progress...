@@ -6,5 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Git workflow
 
+- Skills Tracker development uses `codex/skills-tracker`. Commit and push Skills Tracker work to `origin/codex/skills-tracker`, not to `jobhunt` or `main`.
+- Jobhunt development uses the `jobhunt` branch. Commit and push Jobhunt improvements to `origin/jobhunt`, not directly to `main`.
 - After each implementation, run the appropriate checks, commit the task-related changes, and push to the current branch’s GitHub remote. The user has authorized routine commits and pushes after every implementation.
 - Never force-push or overwrite unrelated work.

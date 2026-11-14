@@ -18,7 +18,7 @@ export default function Header() {
     setAuthMode(mode);
   }
 
-  if (pathname === "/get-started" || pathname.startsWith("/job-hunt")) return null;
+  if (pathname === "/get-started" || pathname.startsWith("/job-hunt") || pathname.startsWith("/skills-tracker")) return null;
 
   return (
     <header className={`${styles.audioSpace} sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b bg-white px-3 py-3 border-black/10 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6`}>
