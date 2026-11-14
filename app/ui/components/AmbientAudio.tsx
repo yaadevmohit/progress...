@@ -20,7 +20,7 @@ export function AmbientAudioProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const pathname = usePathname();
   const dark = pathname === "/";
-  const isJobHunt = pathname.startsWith("/job-hunt");
+  const audioDisabled = pathname.startsWith("/job-hunt") || pathname.startsWith("/skills-tracker");
 
   useEffect(() => () => {
     if (suspendTimer.current) clearTimeout(suspendTimer.current);
@@ -29,16 +29,16 @@ export function AmbientAudioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     audio.current?.setFormActive(pathname === "/get-started");
-    if (isJobHunt) {
+    if (audioDisabled) {
       ++playRequest.current;
       if (suspendTimer.current) clearTimeout(suspendTimer.current);
       audio.current?.mute();
       void audio.current?.context.suspend().then(() => setPlaying(false)).catch(() => setPlaying(false));
     }
-  }, [pathname, isJobHunt]);
+  }, [pathname, audioDisabled]);
 
   function start(intensify = false) {
-    if (isJobHunt) return;
+    if (audioDisabled) return;
     const request = ++playRequest.current;
     if (suspendTimer.current) clearTimeout(suspendTimer.current);
     try {
@@ -57,8 +57,8 @@ export function AmbientAudioProvider({ children }: { children: ReactNode }) {
   }
 
   const playStepTone = useCallback((step: number) => {
-    if (!isJobHunt) audio.current?.reveal(step);
-  }, [isJobHunt]);
+    if (!audioDisabled) audio.current?.reveal(step);
+  }, [audioDisabled]);
 
   function toggle() {
     if (playing) {
@@ -76,7 +76,7 @@ export function AmbientAudioProvider({ children }: { children: ReactNode }) {
   return (
     <AudioContextState.Provider value={{ startJourney: () => { if (!mutedByUser.current) start(true); }, playStepTone }}>
       {children}
-      {!isJobHunt && <div className={`${styles.control} ${dark ? styles.dark : ""}`}>
+      {!audioDisabled && <div className={`${styles.control} ${dark ? styles.dark : ""}`}>
         <button type="button" onClick={toggle} aria-pressed={playing} aria-label={playing ? "Turn ambient sound off" : "Turn ambient sound on"} title={playing ? "Ambient sound on" : "Ambient sound off"} className={styles.toggle}>
           {playing ? <Volume2 size={18} aria-hidden="true" /> : <VolumeX size={18} aria-hidden="true" />}
         </button>
