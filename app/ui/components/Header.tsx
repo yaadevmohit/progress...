@@ -10,7 +10,6 @@ import AuthDialog, { type AuthMode } from "./AuthDialog";
 export default function Header() {
   const pathname = usePathname();
   const isDashboard = pathname === "/dashboard";
-  const isHome = pathname === "/";
   const [menuOpen, setMenuOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
 
@@ -19,12 +18,14 @@ export default function Header() {
     setAuthMode(mode);
   }
 
+  if (pathname === "/get-started" || pathname.startsWith("/job-hunt")) return null;
+
   return (
-    <header className={`sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b bg-transparent px-3 py-3 ${isHome ? "border-white/20 text-white" : "border-black/10 text-black"} sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6`}>
+    <header className={`${styles.audioSpace} sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b bg-white px-3 py-3 border-black/10 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6`}>
       <nav className="mx-auto flex max-w-6xl items-center justify-between">
 
         {/* Logo */}
-        <span className="shrink-0 font-['Avenir_Next','Century_Gothic',sans-serif] text-2xl leading-none font-semibold tracking-[-0.055em] sm:text-3xl">
+        <span className="shrink-0 text-2xl leading-none font-semibold tracking-[-0.055em] sm:text-3xl">
           progress..
         </span>
 
@@ -60,7 +61,7 @@ export default function Header() {
           {/* Mobile: Hamburger toggle */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className={`md:hidden cursor-pointer rounded-xl p-2 transition-colors ${isHome ? "text-white hover:bg-white/10" : "text-neutral-600 hover:bg-neutral-100"}`}
+            className={`md:hidden cursor-pointer rounded-xl p-2 transition-colors text-neutral-600 hover:bg-neutral-100`}
             aria-label="Toggle menu"
           >
             {menuOpen

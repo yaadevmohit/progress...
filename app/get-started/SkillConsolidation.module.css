@@ -1,0 +1,30 @@
+.consolidation { margin-top: 28px; }
+.sourceWrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 600ms ease,opacity 500ms; }
+.sourceInner { overflow: hidden; position: relative; min-height: 0; }
+.caption { margin-bottom: 16px; color: var(--journey-muted); font-size: 11px; font-weight: 600; }
+.sources { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; padding: 20px 0; min-height: 120px; }
+.sources>span { display: block; padding: 10px 14px; border: 1px solid var(--journey-border); border-radius: 30px; background: var(--journey-surface); font-size: 12px; font-weight: 600; color: var(--journey-text); }
+.mergeLabel { position: absolute; inset: 50% 0 auto; display: flex; align-items: center; justify-content: center; gap: 9px; opacity: 0; color: var(--journey-text); font-size: 12px; font-weight: 600; }
+.consolidation[data-stage="1"] .sources>span { animation: merge 900ms cubic-bezier(.55,0,.2,1) both; }
+.consolidation[data-stage="1"] .mergeLabel { animation: reveal 500ms 700ms both; }
+.consolidation[data-stage="2"] .sourceWrap,.consolidation[data-stage="3"] .sourceWrap { grid-template-rows: 0fr; opacity: 0; }
+.arrow { display: block; margin: 14px auto; color: var(--journey-text); }
+.status { margin: 18px 0; color: var(--journey-muted); font-size: 12px; font-weight: 600; line-height: 1.7; }
+.tracks { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.track { padding: 20px; border: 1px solid var(--journey-border); border-radius: 16px; background: var(--journey-surface); animation: arrive 650ms cubic-bezier(.22,.68,.2,1) both; }
+.trackLabel { display: flex; align-items: center; gap: 7px; color: var(--journey-muted); font-size: 10px; font-weight: 600; }
+.track h2 { margin-top: 13px; font-size: 18px; line-height: 1.4; font-weight: 700; color: var(--journey-text); }
+.members { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 13px; }
+.members span { padding: 4px 7px; border: 1px solid var(--journey-border); border-radius: 6px; color: var(--journey-text); font-size: 10px; font-weight: 600; overflow-wrap: anywhere; }
+.track p { margin-top: 14px; color: var(--journey-text); font-size: 12px; font-weight: 600; line-height: 1.8; }
+.recommended { border-color: var(--journey-border-strong); background: var(--journey-selected); }
+.recommended .trackLabel { color: var(--journey-accent); }
+.note { margin-top: 22px; color: var(--journey-muted); font-size: 13px; font-weight: 600; line-height: 1.8; animation: reveal 500ms both; }
+.sourceNote { margin-top: 20px; color: var(--journey-muted); font-size: 10px; font-weight: 600; line-height: 1.8; }
+.sourceNote a { color: var(--journey-muted); text-decoration: underline; text-underline-offset: 3px; }
+.sourceNote a:focus-visible { outline: 2px solid var(--journey-accent); outline-offset: 4px; }
+@keyframes merge { to { transform: translate(var(--merge-x),var(--merge-y)) scale(.2); opacity: 0; filter: blur(2px); } }
+@keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes arrive { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media(max-width:600px) { .tracks { grid-template-columns: 1fr; } .track { padding: 18px; } }
+@media(prefers-reduced-motion:reduce) { .sourceWrap { transition: none; } .sources>span,.mergeLabel,.track,.note { animation: none !important; } }

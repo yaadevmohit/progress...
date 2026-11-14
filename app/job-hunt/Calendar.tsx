@@ -1,0 +1,17 @@
+"use client";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { torontoDate, type CalendarEvent } from "./model";
+import styles from "./page.module.css";
+type Props={events:CalendarEvent[];onAdd:(date:string)=>void;onEdit:(event:CalendarEvent)=>void;onToggle:(id:string)=>void};
+export default function Calendar({events,onAdd,onEdit,onToggle}:Props){
+ const today=torontoDate();
+ const [month,setMonth]=useState(()=>{const [year,m]=today.split('-').map(Number);return new Date(year,m-1,1);});
+ const [selected,setSelected]=useState(today);
+ const year=month.getFullYear(),m=month.getMonth();
+ const days=new Date(year,m+1,0).getDate(),offset=(new Date(year,m,1).getDay()+6)%7;
+ const selectedEvents=events.filter(event=>event.date===selected).sort((a,b)=>a.time.localeCompare(b.time));
+ const label=month.toLocaleDateString('en-CA',{month:'long',year:'numeric'});
+ const iso=(day:number)=>`${year}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+ return <div className={styles.calendarLayout}><section className={styles.calendarPanel}><div className={styles.sectionHeading}><h2>{label}</h2><div className={styles.calendarControls}><button aria-label="Previous month" onClick={()=>setMonth(new Date(year,m-1,1))}><ChevronLeft size={18}/></button><button onClick={()=>{const [y,n]=today.split('-').map(Number);setMonth(new Date(y,n-1,1));setSelected(today);}}>Today</button><button aria-label="Next month" onClick={()=>setMonth(new Date(year,m+1,1))}><ChevronRight size={18}/></button></div></div><div className={styles.monthGrid}>{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day=><span key={day} className={styles.weekday}>{day}</span>)}{Array.from({length:offset},(_,i)=><span key={`blank-${i}`} aria-hidden="true"/>)}{Array.from({length:days},(_,i)=>{const date=iso(i+1),dayEvents=events.filter(e=>e.date===date);return <button key={date} aria-label={`${date}${dayEvents.length?`, ${dayEvents.length} planned items`:''}`} aria-pressed={selected===date} data-today={date===today} onClick={()=>setSelected(date)}><span>{i+1}</span>{dayEvents.length>0&&<small>{dayEvents.length} planned</small>}</button>;})}</div></section><section className={styles.agenda}><div className={styles.sectionHeading}><div><span className={styles.eyebrow}>YOUR DAY</span><h2>{new Date(selected+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric'})}</h2></div><button className={styles.roundButton} aria-label="Plan something for selected date" onClick={()=>onAdd(selected)}><Plus size={18}/></button></div>{selectedEvents.length?selectedEvents.map(event=><article key={event.id} className={styles.agendaItem}><span className={styles.eventKind}>{event.kind}</span><button onClick={()=>onEdit(event)} className={styles.eventTitle}>{event.title}</button><small>{event.time||'Time flexible'}</small><label><input type="checkbox" checked={event.completed} onChange={()=>onToggle(event.id)}/>{event.kind==='Networking'?'Attended':'Done'}</label></article>):<div className={styles.emptyState}><p>A little open space.</p><span>Plan an interview, event, deadline, or a practice session.</span><button className={styles.textButton} onClick={()=>onAdd(selected)}>Plan something +</button></div>}<p className={styles.formHelp}>Attended networking events add to your starting total—avoid recreating events already counted at setup. Log completed practice in Preparation.</p></section></div>;
+}

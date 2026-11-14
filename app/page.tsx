@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { MoveRight } from "lucide-react";
 import ResponsiveLunarScene from "./ui/components/ResponsiveLunarScene";
+import GetStartedButton from "./ui/components/GetStartedButton";
 import HeroViewport from "./ui/components/HeroViewport";
 import styles from "./home.module.css";
 
@@ -19,10 +18,7 @@ export default function Home() {
         </div>
         <div className={styles.intro}>
           <p>Tools designed to stay organized and feel in control of your life.</p>
-          <Link href="/dashboard" className={styles.cta}>
-            <span className={styles.ctaLabel}>Get started</span>
-            <span className={styles.ctaArrow} aria-hidden="true"><MoveRight size={24} strokeWidth={1.5} /></span>
-          </Link>
+          <GetStartedButton />
         </div>
       </div>
     </HeroViewport>

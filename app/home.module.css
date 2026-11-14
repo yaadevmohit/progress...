@@ -377,3 +377,24 @@
 @media (prefers-reduced-motion: reduce) {
   .gestureZoom { transition: none; }
 }
+
+.hero[data-departing] .landscape {
+  transform-origin: 50% 24%;
+  transform: translateZ(0) scale(4.5);
+  transition: transform 1500ms cubic-bezier(.4, 0, .2, 1), opacity 1400ms ease;
+  opacity: .18;
+}
+.hero[data-departing] .content { opacity: 0; transform: translateY(-18px); transition: opacity 500ms, transform 900ms; }
+.hero[data-departing] .grain { opacity: .1; transition: opacity 1200ms; }
+.hero[data-departing] .scene { animation: none !important; background-color: #080a10; }
+.hero[data-departing] .resetView { display: none; }
+@media (max-width: 767px) {
+  .hero[data-departing] .scene { background-size: auto 180%; transition: background-size 1500ms ease, opacity 1400ms; opacity: .25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero[data-departing] .landscape, .hero[data-departing] .content, .hero[data-departing] .scene { transition: none; transform: none; }
+}
+
+.hero::after { content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none; background: #fff; opacity: 0; transition: opacity 400ms 1100ms ease; }
+.hero[data-departing]::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .hero::after { transition: none; } }

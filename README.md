@@ -37,3 +37,18 @@ Saved sessions survive a refresh in the same browser. An active timer only lives
 On screens below 768px, the homepage centers its copy and uses `public/images/lunar-mobile.webp`, a static close-up of the scene. `ResponsiveLunarScene.tsx` loads the animated SVG only on wider screens; mobile also disables animated grain and hover effects.
 
 `HeroViewport.tsx` intercepts desktop pinch/Ctrl+wheel gestures over the hero and zooms the artwork around the pointer. It prevents browser zoom for those gestures, leaves normal scrolling alone, and provides Reset view. The mobile still keeps normal browser gestures.
+
+
+The homepage’s Get started button now performs a 1.5-second space transition into `/get-started`. That route hides the shared navbar and presents a single goal question with free text, a keyboard-accessible custom picker, and a matching suggestion after five idle seconds. Matching uses local keywords from `app/get-started/goals.ts`; it does not send typed text anywhere. Confirming a goal plays a two-sentence focus interlude. The job goal continues to a career-situation question; other directions currently end at a local starting-point summary. Answers remain in page state.
+
+`AmbientAudioProvider` sits in the root layout so sound survives navigation. `app/ui/ambient-audio.ts` synthesizes the stereo ambient tones and pulses with Web Audio. The sound button fades audio on/off; Get started adds a slow volume and pulse swell unless the user has explicitly muted sound. No audio file or external service is required.
+
+The goal form adds a soft 72 BPM synthesized kick, snare, and hi-hat pattern when sound is enabled. A short audio-clock lookahead keeps the rhythm steady; leaving the route, muting, or disposing the audio graph stops the drum scheduler. The custom goal menu uses translucent glass styling and a glossy scrollbar, and fits above or below the field to stay inside the viewport.
+
+Opening the unconfirmed form activates `FormLeaveGuard.tsx`: browser Back opens a custom Keep going / Leave anyway dialog while retaining the answer. Refreshing, closing a tab, and external full-page navigation use the browser’s standard `beforeunload` warning because browsers do not permit custom unload dialogs. The guard applies even before typing and stops after confirming the goal.
+
+`GoalInterlude.tsx` shows two 4.2-second messages in order with soft Web Audio chimes when sound is enabled. The job branch uses the choices in `job-situations.ts`; the flow moves forward with upward slide transitions and no Back/Edit controls, and the leave guard remains active through both questions.
+
+`ProgressRail.tsx` shows only questions already reached, with no total-step count or future markers. Hovering or focusing a completed line reveals its own answer summary: the first records the goal, and the career-situation line combines that goal with the selected situation. The current question has a muted marker with an Awaiting selection tooltip; it cannot open a review until confirmed. Completed lines expand on hover/focus and open locked, read-only versions of their questions; Return to current step restores the ongoing step without changing its answers.
+
+Choosing career situation E (`exploring-paths`) opens a third question about the number of career paths. `CareerPathCount.tsx` renders 1 / 2 / 3 / 3+ as gently floating radio cards, with keyboard navigation and reduced-motion support. Confirming the count adds its summary to the growing tracker and makes it available for locked review. Other career situations keep their existing path.

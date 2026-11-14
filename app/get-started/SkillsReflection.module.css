@@ -1,0 +1,21 @@
+.reflection { margin-top: 32px; }
+.loading { display: flex; align-items: center; gap: 14px; min-height: 120px; color: var(--journey-muted); font-size: 15px; font-weight: 600; animation: appear 500ms both; }
+.dots { display: flex; gap: 5px; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--journey-accent); animation: breathe 1200ms ease-in-out infinite; }
+.dots i:nth-child(2) { animation-delay: 160ms; }
+.dots i:nth-child(3) { animation-delay: 320ms; }
+.copy { animation: appear 650ms both; }
+.line { position: relative; margin-top: 24px; font-size: clamp(17px,2vw,21px); line-height: 1.75; font-weight: 600; letter-spacing: -.01em; color: var(--journey-text); }
+.line:last-child { color: var(--journey-text); }
+.reserve { display: block; visibility: hidden; }
+.typed { position: absolute; top: 0; left: 0; width: 100%; }
+.cursor { display: inline-block; height: 1em; width: 2px; margin-left: 3px; background: var(--journey-accent); vertical-align: -.12em; animation: blink 1000ms step-end infinite; }
+.actions { display: flex; justify-content: flex-end; min-height: 40px; margin-top: 32px; }
+.actions button { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--journey-border); border-radius: 7px; background: var(--journey-surface); color: var(--journey-text); font-size: 13px; font-weight: 600; cursor: pointer; animation: appear 400ms both; }
+.actions button:hover { background: var(--journey-hover); color: var(--journey-accent); }
+.actions button:focus-visible { outline: 2px solid var(--journey-accent); outline-offset: 4px; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@keyframes breathe { 0%,100% { opacity: .3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+@media(prefers-reduced-motion:reduce) { .loading,.copy,.dots i,.cursor,.actions button { animation: none; } }

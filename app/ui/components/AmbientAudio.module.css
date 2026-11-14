@@ -1,0 +1,13 @@
+.control { position: fixed; top: 14px; left: calc(100vw - 42px - max(18px, calc((100vw - 1200px) / 2 - 60px))); z-index: 60; color: #171717; }
+.dark { color: #fff; }
+.toggle { display: grid; place-items: center; width: 42px; height: 42px; cursor: pointer; border: 1px solid #8885; border-radius: 50%; background: #ffffff0d; backdrop-filter: blur(12px); transition: background 200ms, border-color 200ms; }
+.toggle:hover { background: #ffffff20; border-color: #aaa9; }
+.toggle[aria-pressed="true"] { box-shadow: 0 0 18px #ffffff15, inset 0 1px 0 #ffffff30; }
+.toggle:focus-visible { outline: 2px solid #80aaff; outline-offset: 4px; }
+.error { position: absolute; top: 50px; right: 0; width: 220px; padding: 12px; border-radius: 12px; background: #20232b; color: #fff; font-size: 12px; }
+
+.control:not(.dark) .toggle { color: #25364e; background: #ffffffed; border-color: #cbd5e3; }
+.control:not(.dark) .toggle:hover { background: #f0f5fc; border-color: #91a9c9; }
+.control:not(.dark) .toggle[aria-pressed="true"] { color: #2459a8; background: #eaf2ff; box-shadow: 0 0 16px #2459a80c; }
+
+.control:not(.dark) .error { background: #fff; color: #25364e; border: 1px solid #d9e2ee; box-shadow: 0 8px 30px #20345614; }
