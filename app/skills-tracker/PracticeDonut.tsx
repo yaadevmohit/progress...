@@ -39,7 +39,7 @@ export default function PracticeDonut({
             cy="50"
             r="43"
             fill="none"
-            stroke={skill.color}
+            stroke={`var(--tracker-skill-${skill.slot}, ${skill.color})`}
             strokeWidth="12"
             pathLength="100"
             strokeDasharray={`${skill.percent} ${100 - skill.percent}`}

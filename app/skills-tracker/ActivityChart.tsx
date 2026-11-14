@@ -10,7 +10,13 @@ import {
   type Skill,
 } from "./model";
 import styles from "./tracker.module.css";
-const COLORS = ["#e4d9a8", "#f7bc65", "#ed8c48", "#d95a3c", "#a9322e"];
+const COLORS = [
+  "var(--tracker-chart-empty)",
+  "var(--tracker-heat-1, #f7bc65)",
+  "var(--tracker-heat-2, #ed8c48)",
+  "var(--tracker-heat-3, #d95a3c)",
+  "var(--tracker-heat-4, #a9322e)",
+];
 function dateText(day: string, options: Intl.DateTimeFormatOptions) {
   return new Date(day + "T12:00:00Z").toLocaleDateString(undefined, {
     ...options,

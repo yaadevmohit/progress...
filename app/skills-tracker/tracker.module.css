@@ -12,6 +12,12 @@
   --tracker-hover: #efc541;
   --tracker-chart-empty: #e4d9a8;
   --tracker-error: #8b252c;
+  --tracker-header: #f8dc49f5;
+  --tracker-dial-tick: #842e2955;
+  --theme-shift: 0px;
+  --theme-sun-opacity: 1;
+  --theme-moon-opacity: 0;
+  color-scheme: light;
   min-height: 100svh;
   background: var(--tracker-bg);
   color: var(--tracker-ink);
@@ -26,7 +32,7 @@
   border: 1px solid var(--tracker-line);
   border-top: 0;
   border-radius: 0 0 28px 28px;
-  background: #f8dc49f5;
+  background: var(--tracker-header);
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
@@ -39,8 +45,7 @@
   padding: 0 24px;
 }
 .stage {
-  min-height: calc(100svh - 69px);
-  padding-bottom: 24px;
+  padding-bottom: 8px;
 }
 .primary {
   display: flex;
@@ -98,7 +103,9 @@
   min-height: 450px;
   transition:
     min-height 0.65s ease,
-    padding 0.65s ease;
+    padding 0.65s ease,
+    background-color 0.35s ease,
+    border-color 0.35s ease;
 }
 .ring {
   position: relative;
@@ -229,7 +236,7 @@
   --dial-surface: var(--tracker-soft);
   --dial-ink: var(--tracker-ink);
   --dial-accent: var(--tracker-accent);
-  --dial-tick: #842e2955;
+  --dial-tick: var(--tracker-dial-tick);
 }
 .activity {
   min-height: 200px;
@@ -395,9 +402,6 @@
     border-radius: 4px;
     min-height: 18px;
   }
-  .stage {
-    min-height: auto;
-  }
   .tooltip {
     width: 130px;
   }
@@ -478,4 +482,134 @@
 .root h2,
 .dialog h2 {
   color: var(--tracker-accent);
+}
+
+/* Scoped to Skills Tracker; the other tools keep their own appearance. */
+:global(html[data-skills-theme="dark"]) .root {
+  --tracker-bg: #0b1d51;
+  --tracker-panel: #12285f;
+  --tracker-ink: #eef3ff;
+  --tracker-muted: #bac8ed;
+  --tracker-accent: #ffda70;
+  --tracker-action: #f5cc51;
+  --tracker-on-action: #132047;
+  --tracker-line: #aec5ff33;
+  --tracker-soft: #172f66;
+  --tracker-field: #1a326c;
+  --tracker-hover: #233d78;
+  --tracker-chart-empty: #293e6e;
+  --tracker-error: #ffb1b1;
+  --tracker-header: #0b1d51f5;
+  --tracker-dial-tick: #bac8ed66;
+  --tracker-skill-0: #f7ce5b;
+  --tracker-skill-1: #ff9677;
+  --tracker-skill-2: #bbadff;
+  --tracker-skill-3: #72d6cc;
+  --tracker-skill-4: #f2a6ce;
+  --tracker-skill-5: #8bbcff;
+  --tracker-heat-1: #536792;
+  --tracker-heat-2: #8d9ebc;
+  --tracker-heat-3: #c9c7a0;
+  --tracker-heat-4: #ffda70;
+  --theme-shift: 26px;
+  --theme-sun-opacity: 0;
+  --theme-moon-opacity: 1;
+  color-scheme: dark;
+}
+.root {
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+.header,
+.skill,
+.dialog,
+.input {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.35s ease;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.themeToggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 58px;
+  height: 32px;
+  padding: 3px;
+  border: 1px solid var(--tracker-line);
+  border-radius: 999px;
+  background: var(--tracker-soft);
+  color: var(--tracker-ink);
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease;
+}
+.themeThumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--tracker-field);
+  box-shadow: 0 1px 5px #0002;
+  transform: translateX(var(--theme-shift));
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.35s ease;
+}
+.themeSun,
+.themeMoon {
+  position: absolute;
+  transition:
+    opacity 0.3s ease,
+    transform 0.45s ease;
+}
+.themeSun {
+  opacity: var(--theme-sun-opacity);
+  transform: rotate(calc(var(--theme-moon-opacity) * 100deg));
+}
+.themeMoon {
+  opacity: var(--theme-moon-opacity);
+  transform: rotate(calc(var(--theme-sun-opacity) * -100deg));
+}
+.themeStars {
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  font-size: 12px;
+  color: var(--tracker-accent);
+  opacity: var(--theme-moon-opacity);
+  transition: opacity 0.3s ease;
+}
+@media (max-width: 480px) {
+  .header {
+    flex-wrap: wrap;
+  }
+  .headerActions {
+    gap: 4px;
+    margin-left: auto;
+  }
+  .primary {
+    padding: 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .headerActions > .icon {
+    padding: 6px;
+  }
+}
+.panel:not(.leader) {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.35s ease;
+}
+:global(html[data-skills-theme="dark"]) .dialog::backdrop {
+  background: #020817b3;
 }

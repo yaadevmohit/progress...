@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
+import ThemeToggle from "./ThemeToggle";
 import ActivityChart from "./ActivityChart";
 import PracticeDonut from "./PracticeDonut";
 import StreakFlame from "./StreakFlame";
@@ -173,7 +174,7 @@ export default function SkillsTracker() {
         >
           Skills Tracker<span className="text-[var(--tracker-accent)]">.</span>
         </a>
-        <div className="flex items-center gap-2">
+        <div className={styles.headerActions}>
           <button
             aria-label="Export tracker backup"
             onClick={() => {
@@ -202,6 +203,7 @@ export default function SkillsTracker() {
             />
             Log session
           </button>
+          <ThemeToggle />
         </div>
       </header>
       <main className={styles.main}>
@@ -331,7 +333,7 @@ export default function SkillsTracker() {
                               aria-hidden="true"
                               className="h-2.5 w-2.5 shrink-0 rounded-full"
                               style={{
-                                backgroundColor: PRACTICE_COLORS[skill.slot],
+                                backgroundColor: `var(--tracker-skill-${skill.slot}, ${PRACTICE_COLORS[skill.slot]})`,
                               }}
                             />
                             <span className="truncate">{skill.name}</span>
@@ -401,7 +403,7 @@ export default function SkillsTracker() {
             </div>
           </div>
         </div>
-        <section className="pb-10 pt-8" aria-labelledby="sessions-title">
+        <section className="pb-10 pt-6" aria-labelledby="sessions-title">
           <div className="mb-4 flex items-center justify-between">
             <h2 id="sessions-title" className="text-lg font-bold">
               Recent sessions

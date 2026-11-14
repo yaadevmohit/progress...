@@ -44,6 +44,7 @@ Dates are calendar dates, while timestamps are instants. Logging uses the browse
 | `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, greeting streak and timer |
 | `app/skills-tracker/ActivityChart.tsx` | Adaptive weekly, monthly and annual activity scales with drill-down and bounded navigation |
 | `app/skills-tracker/PracticeDonut.tsx` | Time distribution across skills, with colours matched to card dots |
+| `app/skills-tracker/ThemeToggle.tsx` | Animated light/dark switch, with a separate local preference and cross-tab updates |
 | `app/skills-tracker/StreakFlame.tsx` | Active streak glow and increase animation, respecting reduced motion |
 | `app/skills-tracker/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |
 | `app/skills-tracker/SkillComposer.tsx` | Inline skill creation, reused in cards and the session form |
@@ -65,3 +66,5 @@ Learning resources are optional and saved with each skill in local storage. Olde
 The skill grid displays existing cards in saved order followed by exactly one Add a skill card, until all six slots are used. The donut only allocates segments to skills with recorded learning time; its centre shows total learning time and the leading skill remains named below. Flame icons are orange for active streaks, flare when a count increases during use, and do not celebrate initial hydration of saved data.
 
 The tracker palette lives in CSS variables in `tracker.module.css`: yellow surfaces, red/brown text and warm chart colours. The header Log session button retains its green styling. The shared duration dial accepts scoped CSS colour variables, with green defaults for the original dashboard.
+
+Dark mode uses `#0B1D51` as its background, lighter navy surfaces, pale text and gold accents. The preference is saved separately under `progress.skills-tracker.theme`; the root layout restores it before hydration to avoid a bright light-theme flash. Dark styling is scoped to the tracker, and dialogs, charts and native date fields follow the same theme. The navbar toggle works with keyboard input and respects reduced-motion preferences. Recent sessions follow the content directly, without a viewport-height spacer.
