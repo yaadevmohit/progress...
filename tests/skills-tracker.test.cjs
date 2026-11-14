@@ -276,3 +276,40 @@ test("resources reject unsafe links and malformed saved resources without losing
   state.skills[0].resources = [valid, valid];
   assert.ok(model.decodeTracker(JSON.stringify(state)).error);
 });
+
+test("only one add card follows existing skills until all six slots are filled", () => {
+  assert.equal(JSON.stringify(model.visibleSkillSlots([])), "[0]");
+  const skills = [skill("a", 3), skill("b", 0)];
+  assert.equal(JSON.stringify(model.visibleSkillSlots(skills)), "[3,0,1]");
+  for (const slot of [1, 2, 4]) skills.push(skill(String(slot), slot));
+  assert.equal(model.visibleSkillSlots(skills).length, 6);
+  skills.push(skill("last", 5));
+  assert.equal(model.visibleSkillSlots(skills).length, 6);
+  assert.equal(new Set(model.visibleSkillSlots(skills)).size, 6);
+});
+
+test("donut segments represent actual time, exclude unpractised skills and cover the whole ring", () => {
+  const skills = [
+    { ...skill("a", 0), seconds: 1500 },
+    { ...skill("b", 1), seconds: 4500 },
+    { ...skill("c", 2), seconds: 0 },
+  ];
+  let segments = model.practiceBreakdown(skills);
+  assert.equal(segments.length, 2);
+  assert.equal(segments[0].percent, 25);
+  assert.equal(segments[1].percent, 75);
+  assert.equal(segments[1].offset, 25);
+  assert.notEqual(segments[0].color, segments[1].color);
+  skills[2].seconds = 6000;
+  segments = model.practiceBreakdown(skills);
+  assert.equal(segments.length, 3);
+  assert.equal(segments[2].percent, 50);
+  assert.equal(
+    segments.reduce((sum, segment) => sum + segment.percent, 0),
+    100,
+  );
+  assert.equal(
+    model.practiceBreakdown([{ ...skill("zero", 0), seconds: 0 }]).length,
+    0,
+  );
+});

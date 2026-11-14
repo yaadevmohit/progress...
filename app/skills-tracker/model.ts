@@ -302,3 +302,41 @@ export function decodeTracker(raw: string): {
     };
   }
 }
+
+export const PRACTICE_COLORS = [
+  "#10b981",
+  "#60a5fa",
+  "#a78bfa",
+  "#fbbf24",
+  "#fb7185",
+  "#22d3ee",
+];
+
+// Preserve card order from the saved skills, then append one available slot.
+export function visibleSkillSlots(skills: Skill[]) {
+  const slots = skills.map((skill) => skill.slot);
+  const next = Array.from({ length: MAX_SKILLS }, (_, slot) => slot).find(
+    (slot) => !slots.includes(slot),
+  );
+  return next === undefined ? slots : [...slots, next];
+}
+
+export function practiceBreakdown(
+  skills: { id: string; name: string; slot: number; seconds: number }[],
+) {
+  const total = skills.reduce((sum, skill) => sum + skill.seconds, 0);
+  let offset = 0;
+  return skills
+    .filter((skill) => skill.seconds > 0)
+    .map((skill) => {
+      const percent = (skill.seconds / total) * 100;
+      const segment = {
+        ...skill,
+        color: PRACTICE_COLORS[skill.slot],
+        percent,
+        offset,
+      };
+      offset += percent;
+      return segment;
+    });
+}

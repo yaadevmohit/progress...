@@ -1,11 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Download, Flame, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Download, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
+import PracticeDonut from "./PracticeDonut";
+import StreakFlame from "./StreakFlame";
 import SkillResources from "./SkillResources";
 import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
+  PRACTICE_COLORS,
+  visibleSkillSlots,
   durationLabel,
   localDay,
   MAX_SKILLS,
@@ -308,8 +312,12 @@ export default function SkillsTracker() {
                 Make a little room for what you want to learn.
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800">
-              <Flame size={18} />
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800"
+            >
+              <StreakFlame count={streak} ready={ready && now !== null} />
               {streak}-day overall streak
             </div>
           </div>
@@ -360,33 +368,24 @@ export default function SkillsTracker() {
                 className={`${styles.panel} ${styles.leader} ${timer ? styles.compact : ""}`}
               >
                 <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-                  Most practised
+                  The most practiced
                 </p>
-                <div
-                  className={styles.ring}
-                  style={{
-                    background: `conic-gradient(#059669 ${share}%,#ecfdf5 0)`,
-                  }}
-                >
-                  <div>
-                    <span className="text-3xl font-bold tracking-tight text-emerald-950">
-                      {durationLabel(leader?.seconds || 0)}
-                    </span>
-                    <span className="mt-1 text-xs font-semibold text-neutral-500">
-                      learning time
-                    </span>
-                  </div>
-                </div>
+                <PracticeDonut skills={stats} />
                 <h2 className="break-words text-2xl font-bold text-emerald-800">
                   {leader?.name || "Your next chapter"}
                 </h2>
                 <p className="mt-2 text-sm font-semibold leading-relaxed text-neutral-500">
                   {leader
-                    ? `${share}% of your learning time. Keep showing up.`
+                    ? `${durationLabel(leader.seconds)} · ${share}% of your learning time.`
                     : "Add a skill and log your first session. Your most-practised skill will appear here."}
                 </p>
                 <div className="mt-auto flex items-center gap-2 pt-5 text-sm font-bold text-emerald-700">
-                  <Flame size={17} />
+                  <StreakFlame
+                    key={leader?.id ?? "empty"}
+                    count={leader?.streak ?? 0}
+                    ready={ready && now !== null}
+                    size={17}
+                  />
                   {leader
                     ? `${leader.streak}-day skill streak`
                     : "Progress starts with one session"}
@@ -414,7 +413,7 @@ export default function SkillsTracker() {
                 </span>
               </div>
               <div className={styles.skills}>
-                {Array.from({ length: MAX_SKILLS }, (_, slot) => {
+                {visibleSkillSlots(state.skills).map((slot) => {
                   const skill = stats.find((s) => s.slot === slot);
                   return (
                     <div
@@ -424,10 +423,17 @@ export default function SkillsTracker() {
                       {skill ? (
                         <>
                           <h3
-                            className="truncate text-base font-bold text-emerald-800"
+                            className="flex min-w-0 items-center gap-2 text-base font-bold text-emerald-800"
                             title={skill.name}
                           >
-                            {skill.name}
+                            <span
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
+                              style={{
+                                backgroundColor: PRACTICE_COLORS[skill.slot],
+                              }}
+                            />
+                            <span className="truncate">{skill.name}</span>
                           </h3>
                           <div className="my-1 text-3xl font-bold tracking-tight text-neutral-900">
                             {durationLabel(skill.seconds)}

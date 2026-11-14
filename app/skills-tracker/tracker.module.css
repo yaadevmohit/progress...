@@ -88,6 +88,7 @@
     padding 0.65s ease;
 }
 .ring {
+  position: relative;
   display: grid;
   place-items: center;
   width: 170px;
@@ -99,15 +100,47 @@
     height 0.65s ease,
     margin 0.65s ease;
 }
-.ring > div {
-  border-radius: 50%;
-  background: white;
-  width: calc(100% - 15px);
-  height: calc(100% - 15px);
+.donut {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.donutCenter {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+}
+.donutSegment {
+  transition:
+    stroke-dasharray 0.6s ease,
+    stroke-dashoffset 0.6s ease;
+}
+.flame {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.flameIdle {
+  color: #9ca3af;
+}
+.flameLit {
+  color: #ea580c;
+  fill: #fbbf24;
+  transform-origin: center bottom;
+  animation: ember 2.4s ease-in-out infinite;
+}
+@keyframes ember {
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+    filter: drop-shadow(0 0 1px #fb923c66);
+  }
+  50% {
+    transform: scale(1.08, 0.96) rotate(3deg);
+    filter: drop-shadow(0 0 4px #fb923c99);
+  }
 }
 .compact {
   min-height: 245px;

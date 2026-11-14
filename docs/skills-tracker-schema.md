@@ -42,6 +42,8 @@ Dates are calendar dates, while timestamps are instants. Logging uses the browse
 | File | Responsibility |
 | --- | --- |
 | `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, weekly heatmap, greeting streak and timer |
+| `app/skills-tracker/PracticeDonut.tsx` | Time distribution across skills, with colours matched to card dots |
+| `app/skills-tracker/StreakFlame.tsx` | Active streak glow and increase animation, respecting reduced motion |
 | `app/skills-tracker/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |
 | `app/skills-tracker/SkillComposer.tsx` | Inline skill creation, reused in cards and the session form |
 | `app/skills-tracker/SessionDialog.tsx` | Log time or start a timer, with a custom skill picker |
@@ -58,3 +60,5 @@ The dismissible sync reminder returns 48 hours after dismissal while the tracker
 The server will derive `user_id` from a verified session, never trust one sent by the client, and authorize every read and write. Account ownership and provider credentials belong in the future authentication system. Before connecting this schema, plan local-data import, conflicts, backups, deletion, and row-level access policies. None of those services are active now.
 
 Learning resources are optional and saved with each skill in local storage. Older saves without a `resources` field remain valid. The resource section supports multiple links, opens them in a new tab, and lets you remove saved links. Only HTTP/HTTPS URLs without embedded credentials are accepted. Resources do not affect learning totals or streaks.
+
+The skill grid displays existing cards in saved order followed by exactly one Add a skill card, until all six slots are used. The donut only allocates segments to skills with recorded learning time; its centre shows total learning time and the leading skill remains named below. Flame icons are orange for active streaks, flare when a count increases during use, and do not celebrate initial hydration of saved data.
