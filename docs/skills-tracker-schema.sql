@@ -33,6 +33,19 @@ $$;
 CREATE TRIGGER enforce_skill_limit BEFORE INSERT OR UPDATE OF user_id ON skills
   FOR EACH ROW EXECUTE FUNCTION limit_skills();
 
+-- Optional learning links: zero or many resources per skill.
+CREATE TABLE skill_resources (
+  id uuid PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  skill_id uuid NOT NULL,
+  name varchar(100) NOT NULL CHECK (length(trim(name)) > 0),
+  url varchar(2048) NOT NULL CHECK (url ~ '^https?://'),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (user_id, skill_id) REFERENCES skills(user_id, id) ON DELETE CASCADE,
+  UNIQUE (user_id, skill_id, url)
+);
+-- The future server must also parse/validate URLs before saving.
+
 CREATE TABLE timer_runs (
   id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

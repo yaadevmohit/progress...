@@ -7,6 +7,7 @@ erDiagram
   USERS ||--o{ SKILLS : owns
   USERS ||--o{ LEARNING_SESSIONS : logs
   SKILLS ||--o{ LEARNING_SESSIONS : receives
+  SKILLS ||--o{ SKILL_RESOURCES : collects
   SKILLS ||--o{ TIMER_RUNS : times
   USERS ||--o| USER_PREFERENCES : configures
 ```
@@ -17,6 +18,7 @@ erDiagram
 | --- | --- | --- |
 | `users` | Future account and preferred time zone | A learner in America/Toronto |
 | `skills` | A named skill, its card slot and colour | Spanish, slot 0 |
+| `skill_resources` | Optional named links, many per skill | A course and a reference guide |
 | `learning_sessions` | The source of truth for learning progress | Spanish, 25 minutes, November 14 |
 | `timer_runs` | A running timer and its deadline | Started 14:00, ends 14:25 |
 | `user_preferences` | When the reminder was dismissed | Hide it for another 48 hours |
@@ -40,6 +42,7 @@ Dates are calendar dates, while timestamps are instants. Logging uses the browse
 | File | Responsibility |
 | --- | --- |
 | `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, weekly heatmap, greeting streak and timer |
+| `app/skills-tracker/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |
 | `app/skills-tracker/SkillComposer.tsx` | Inline skill creation, reused in cards and the session form |
 | `app/skills-tracker/SessionDialog.tsx` | Log time or start a timer, with a custom skill picker |
 | `app/skills-tracker/model.ts` | Data types, validation and progress calculations |
@@ -53,3 +56,5 @@ The dismissible sync reminder returns 48 hours after dismissal while the tracker
 ## Later, when accounts exist
 
 The server will derive `user_id` from a verified session, never trust one sent by the client, and authorize every read and write. Account ownership and provider credentials belong in the future authentication system. Before connecting this schema, plan local-data import, conflicts, backups, deletion, and row-level access policies. None of those services are active now.
+
+Learning resources are optional and saved with each skill in local storage. Older saves without a `resources` field remain valid. The resource section supports multiple links, opens them in a new tab, and lets you remove saved links. Only HTTP/HTTPS URLs without embedded credentials are accepted. Resources do not affect learning totals or streaks.

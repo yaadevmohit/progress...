@@ -9,11 +9,27 @@ export const COLORS = [
   "#0f766e",
   "#65a30d",
 ];
+export type LearningResource = { id: string; name: string; url: string };
+
+export function resourceUrl(value: string) {
+  const url = new URL(value.trim());
+  if (
+    !["https:", "http:"].includes(url.protocol) ||
+    url.username ||
+    url.password
+  )
+    throw new Error("Use an http or https link without embedded credentials.");
+  if (url.href.length > 2048)
+    throw new Error("Keep the link under 2,048 characters.");
+  return url.href;
+}
+
 export type Skill = {
   id: string;
   name: string;
   slot: number;
   color: string;
+  resources?: LearningResource[];
   createdAt: string;
 };
 export type LearningSession = {
@@ -200,6 +216,25 @@ export function decodeTracker(raw: string): {
         !iso(skill.createdAt)
       )
         throw Error();
+      // Older saves have no resources field; keep them readable without a reset.
+      if (skill.resources !== undefined) {
+        if (!Array.isArray(skill.resources)) throw Error();
+        const resourceIds = new Set<string>();
+        for (const resource of skill.resources) {
+          if (
+            !object(resource) ||
+            !id(resource.id) ||
+            resourceIds.has(resource.id) ||
+            typeof resource.name !== "string" ||
+            !resource.name.trim() ||
+            resource.name.length > 100 ||
+            typeof resource.url !== "string"
+          )
+            throw Error();
+          resourceUrl(resource.url);
+          resourceIds.add(resource.id);
+        }
+      }
       const name = skill.name.trim().toLowerCase();
       if (ids.has(skill.id) || names.has(name) || slots.has(skill.slot))
         throw Error();

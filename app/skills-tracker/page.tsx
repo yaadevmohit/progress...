@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Download, Flame, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
+import SkillResources from "./SkillResources";
 import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
@@ -286,7 +287,12 @@ export default function SkillsTracker() {
             onClick={() => setSession("")}
             className={styles.primary}
           >
-            <Plus size={16} />
+            <Plus
+              size={16}
+              strokeWidth={2.75}
+              aria-hidden="true"
+              className={styles.sessionPlus}
+            />
             Log session
           </button>
         </div>
@@ -426,17 +432,20 @@ export default function SkillsTracker() {
                           <div className="my-1 text-3xl font-bold tracking-tight text-neutral-900">
                             {durationLabel(skill.seconds)}
                           </div>
-                          <div className="flex items-center justify-between gap-1">
+                          <div className="flex flex-wrap items-center justify-between gap-1">
                             <span className="text-xs font-semibold text-emerald-700">
                               {skill.streak}-day streak
                             </span>
-                            <button
-                              aria-label={`Log session for ${skill.name}`}
-                              onClick={() => setSession(skill.id)}
-                              className="rounded-lg p-1 text-emerald-700 hover:bg-emerald-50"
-                            >
-                              <Plus size={17} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <SkillResources skill={skill} />
+                              <button
+                                aria-label={`Log session for ${skill.name}`}
+                                onClick={() => setSession(skill.id)}
+                                className="rounded-lg p-1 text-emerald-700 hover:bg-emerald-50"
+                              >
+                                <Plus size={17} />
+                              </button>
+                            </div>
                           </div>
                         </>
                       ) : editing === slot ? (

@@ -28,6 +28,7 @@ function load(file, dependencies = {}, globals = {}) {
       Number,
       String,
       Intl,
+      URL,
       crypto,
       ...globals,
     },
@@ -220,4 +221,58 @@ test("early finish logs elapsed time, cancellation logs nothing, reminder snooze
   b.advance(model.REMINDER_INTERVAL);
   await b.store.dismissReminder();
   assert.equal(b.read().reminderDismissedAt - dismissed, 48 * 60 * 60 * 1000);
+});
+
+test("resources are optional in older saves and multiple links persist independently", async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill("Spanish");
+  assert.equal(model.decodeTracker(JSON.stringify(b.read())).error, null);
+  const first = await b.store.addResource(
+    skill.id,
+    "  Course  ",
+    "https://example.com/course",
+  );
+  await b.store.addResource(
+    skill.id,
+    "Dictionary",
+    "https://example.com/dictionary",
+  );
+  assert.equal(b.read().skills[0].resources.length, 2);
+  assert.equal(b.read().skills[0].resources[0].name, "Course");
+  await assert.rejects(
+    b.store.addResource(skill.id, "Duplicate", first.url),
+    /already saved/,
+  );
+  await b.store.removeResource(skill.id, first.id);
+  assert.equal(b.read().skills[0].resources.length, 1);
+  assert.equal(b.read().skills[0].resources[0].name, "Dictionary");
+  assert.equal(b.read().sessions.length, 0);
+});
+
+test("resources reject unsafe links and malformed saved resources without losing data", async () => {
+  const b = browserStore(),
+    skill = await b.store.addSkill("Python");
+  for (const url of [
+    "javascript:alert(1)",
+    "data:text/html,hello",
+    "file:///tmp/file",
+    "not a link",
+    "https://user:password@example.com",
+  ]) {
+    await assert.rejects(
+      b.store.addResource(skill.id, "Guide", url),
+      /valid http or https/,
+    );
+  }
+  assert.equal(b.read().skills[0].resources, undefined);
+  const valid = await b.store.addResource(
+    skill.id,
+    "Guide",
+    "https://example.com",
+  );
+  const state = b.read();
+  state.skills[0].resources[0].url = "javascript:alert(1)";
+  assert.ok(model.decodeTracker(JSON.stringify(state)).error);
+  state.skills[0].resources = [valid, valid];
+  assert.ok(model.decodeTracker(JSON.stringify(state)).error);
 });

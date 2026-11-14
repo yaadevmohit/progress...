@@ -38,7 +38,7 @@
   padding: 10px 15px;
   border-radius: 12px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
 }
 .primary:disabled {
   opacity: 0.4;
@@ -329,5 +329,18 @@
   .dialog {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+.sessionPlus {
+  transition: transform 300ms ease;
+}
+.primary:hover .sessionPlus,
+.primary:focus-visible .sessionPlus {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sessionPlus {
+    transition: none;
   }
 }

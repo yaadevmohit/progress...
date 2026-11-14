@@ -5,6 +5,7 @@ import {
   decodeTracker,
   EMPTY_STATE,
   localDay,
+  resourceUrl,
   MAX_MINUTES,
   MAX_SKILLS,
   validDay,
@@ -247,4 +248,54 @@ export function useClock() {
     () => clock,
     () => null,
   );
+}
+
+export async function addResource(skillId: string, name: string, link: string) {
+  return mutate((state) => {
+    const skill = state.skills.find((item) => item.id === skillId);
+    if (!skill) throw new Error("This skill is no longer available.");
+    const clean = name.trim();
+    if (!clean || clean.length > 100)
+      throw new Error("Enter a resource name between 1 and 100 characters.");
+    let url: string;
+    try {
+      url = resourceUrl(link);
+    } catch {
+      throw new Error(
+        "Enter a valid http or https link, such as https://example.com.",
+      );
+    }
+    if (skill.resources?.some((item) => item.url === url))
+      throw new Error("This link is already saved for this skill.");
+    const resource = { id: crypto.randomUUID(), name: clean, url };
+    return {
+      state: {
+        ...state,
+        skills: state.skills.map((item) =>
+          item.id === skillId
+            ? { ...item, resources: [...(item.resources ?? []), resource] }
+            : item,
+        ),
+      },
+      result: resource,
+    };
+  });
+}
+export async function removeResource(skillId: string, resourceId: string) {
+  return mutate((state) => ({
+    state: {
+      ...state,
+      skills: state.skills.map((skill) =>
+        skill.id === skillId
+          ? {
+              ...skill,
+              resources: (skill.resources ?? []).filter(
+                (item) => item.id !== resourceId,
+              ),
+            }
+          : skill,
+      ),
+    },
+    result: null,
+  }));
 }
