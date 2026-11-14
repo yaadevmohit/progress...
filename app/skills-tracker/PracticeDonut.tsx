@@ -29,7 +29,7 @@ export default function PracticeDonut({
           cy="50"
           r="43"
           fill="none"
-          stroke="#ecefed"
+          stroke="var(--tracker-chart-empty)"
           strokeWidth="12"
         />
         {segments.map((skill) => (
@@ -55,10 +55,10 @@ export default function PracticeDonut({
         ))}
       </svg>
       <div className={styles.donutCenter} aria-hidden="true">
-        <span className="text-3xl font-bold tracking-tight text-emerald-950">
+        <span className="text-3xl font-bold tracking-tight text-[var(--tracker-ink)]">
           {durationLabel(total)}
         </span>
-        <span className="mt-1 text-xs font-semibold text-neutral-500">
+        <span className="mt-1 text-xs font-semibold text-[var(--tracker-muted)]">
           total time
         </span>
       </div>

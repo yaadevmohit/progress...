@@ -1,7 +1,20 @@
 .root {
+  --tracker-bg: #f8dc49;
+  --tracker-panel: #fce46b;
+  --tracker-ink: #842e29;
+  --tracker-muted: #965239;
+  --tracker-accent: #bf4035;
+  --tracker-action: #ab352d;
+  --tracker-on-action: #fff7cd;
+  --tracker-line: #c89a3b66;
+  --tracker-soft: #f4cc4c;
+  --tracker-field: #fff0a3;
+  --tracker-hover: #efc541;
+  --tracker-chart-empty: #e4d9a8;
+  --tracker-error: #8b252c;
   min-height: 100svh;
-  background: #fff;
-  color: #171b18;
+  background: var(--tracker-bg);
+  color: var(--tracker-ink);
 }
 .header {
   position: sticky;
@@ -10,10 +23,10 @@
   max-width: 1202px;
   margin: auto;
   padding: 14px 24px;
-  border: 1px solid #e5e9e6;
+  border: 1px solid var(--tracker-line);
   border-top: 0;
   border-radius: 0 0 28px 28px;
-  background: #fffffff5;
+  background: #f8dc49f5;
   backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
@@ -46,12 +59,12 @@
 .icon {
   padding: 8px;
   border-radius: 9px;
-  color: #52615a;
+  color: var(--tracker-ink);
   display: grid;
   place-items: center;
 }
 .icon:hover {
-  background: #ecfdf5;
+  background: var(--tracker-hover);
 }
 .icon:disabled {
   opacity: 0.25;
@@ -73,10 +86,10 @@
   gap: 12px;
 }
 .panel {
-  border: 1px solid #e2e9e5;
+  border: 1px solid var(--tracker-line);
   border-radius: 22px;
   padding: 24px;
-  background: white;
+  background: var(--tracker-panel);
 }
 .leader {
   display: flex;
@@ -123,7 +136,7 @@
   flex-shrink: 0;
 }
 .flameIdle {
-  color: #9ca3af;
+  color: var(--tracker-muted);
 }
 .flameLit {
   color: #ea580c;
@@ -174,13 +187,49 @@
 .skill {
   min-height: 122px;
   padding: 14px;
-  border: 1px solid #e2e9e5;
+  border: 1px solid var(--tracker-line);
   border-radius: 18px;
   animation: arrive 0.4s ease both;
 }
 .empty {
-  border-style: dashed;
+  border: 0;
+  background: transparent;
   padding: 12px;
+}
+.addSkill {
+  display: flex;
+  min-height: 98px;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--tracker-accent);
+  font-size: 14px;
+  font-weight: 900;
+}
+.addSkill svg {
+  transition: transform 0.3s ease;
+}
+.addSkill:hover svg,
+.addSkill:focus-visible svg {
+  transform: scale(1.1) rotate(90deg);
+}
+.addSkill:disabled {
+  opacity: 0.4;
+}
+.composerCard {
+  background: var(--tracker-field);
+}
+.durationDial {
+  --dial-border: var(--tracker-line);
+  --dial-surface: var(--tracker-soft);
+  --dial-ink: var(--tracker-ink);
+  --dial-accent: var(--tracker-accent);
+  --dial-tick: #842e2955;
 }
 .activity {
   min-height: 200px;
@@ -217,7 +266,7 @@
 .tile:hover,
 .tile:focus-visible {
   transform: translateY(-3px);
-  outline: 2px solid #047857;
+  outline: 2px solid var(--tracker-action);
   outline-offset: 3px;
   z-index: 2;
 }
@@ -229,8 +278,8 @@
   bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
-  background: #12372b;
-  color: white;
+  background: var(--tracker-ink);
+  color: var(--tracker-on-action);
   width: 170px;
   padding: 9px;
   border-radius: 9px;
@@ -265,28 +314,28 @@
   max-width: 470px;
   max-height: 90svh;
   overflow: auto;
-  border: 1px solid #d1fae5;
+  border: 1px solid var(--tracker-line);
   border-radius: 24px;
-  color: #17231c;
-  background: #fff;
-  box-shadow: 0 25px 100px #052e1633;
+  color: var(--tracker-ink);
+  background: var(--tracker-field);
+  box-shadow: 0 25px 100px #65291933;
   animation: arrive 0.25s ease;
 }
 .dialog::backdrop {
-  background: #0a241b55;
+  background: #54251666;
   backdrop-filter: blur(5px);
 }
 .input {
   display: block;
   width: 100%;
   margin-top: 7px;
-  border: 1px solid #d4dfd8;
+  border: 1px solid var(--tracker-line);
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 14px;
   font-weight: 500;
-  background: #fff;
-  color: #17231c;
+  background: var(--tracker-field);
+  color: var(--tracker-ink);
 }
 .root button,
 .dialog button {
@@ -298,7 +347,7 @@
 }
 .root button:focus-visible,
 .dialog button:focus-visible {
-  outline: 2px solid #047857;
+  outline: 2px solid var(--tracker-action);
   outline-offset: 3px;
 }
 @keyframes arrive {
@@ -382,13 +431,13 @@
   display: flex;
   gap: 2px;
   padding: 3px;
-  background: #f3f6f4;
+  background: var(--tracker-soft);
   border-radius: 10px;
 }
 .activityViews button {
   padding: 5px 8px;
   border-radius: 7px;
-  color: #64746b;
+  color: var(--tracker-muted);
   font-size: 11px;
   font-weight: 800;
   transition:
@@ -397,9 +446,9 @@
     box-shadow 0.2s;
 }
 .activityViews button[aria-pressed="true"] {
-  background: white;
-  color: #047857;
-  box-shadow: 0 1px 4px #052e1610;
+  background: var(--tracker-panel);
+  color: var(--tracker-ink);
+  box-shadow: 0 1px 4px #65291918;
 }
 .activityZoom {
   animation: activityZoom 0.35s ease both;
@@ -413,4 +462,20 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+.primary:focus-visible {
+  outline-color: #047857;
+}
+.input::placeholder {
+  color: var(--tracker-muted);
+  opacity: 0.75;
+}
+.addSkill span {
+  color: var(--tracker-ink);
+}
+.root h1,
+.root h2,
+.dialog h2 {
+  color: var(--tracker-accent);
 }

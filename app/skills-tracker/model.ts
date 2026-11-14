@@ -2,12 +2,12 @@ export const MAX_SKILLS = 6;
 export const MAX_MINUTES = 1440;
 export const REMINDER_INTERVAL = 48 * 60 * 60 * 1000;
 export const COLORS = [
-  "#059669",
-  "#0d9488",
-  "#15803d",
-  "#22a06b",
-  "#0f766e",
-  "#65a30d",
+  "#bf4035",
+  "#e57442",
+  "#8b353b",
+  "#d98c3e",
+  "#b35b62",
+  "#86513b",
 ];
 export type LearningResource = { id: string; name: string; url: string };
 
@@ -303,14 +303,7 @@ export function decodeTracker(raw: string): {
   }
 }
 
-export const PRACTICE_COLORS = [
-  "#10b981",
-  "#60a5fa",
-  "#a78bfa",
-  "#fbbf24",
-  "#fb7185",
-  "#22d3ee",
-];
+export const PRACTICE_COLORS = COLORS;
 
 // Preserve card order from the saved skills, then append one available slot.
 export function visibleSkillSlots(skills: Skill[]) {

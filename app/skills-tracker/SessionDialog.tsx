@@ -75,13 +75,13 @@ export default function SessionDialog({
             type="button"
             onClick={onClose}
             aria-label="Close session form"
-            className="rounded-lg p-2 hover:bg-neutral-100"
+            className="rounded-lg p-2 hover:bg-[var(--tracker-hover)]"
           >
             <X size={20} />
           </button>
         </div>
         <div
-          className="mx-auto mb-5 flex w-fit rounded-full bg-emerald-50 p-1"
+          className="mx-auto mb-5 flex w-fit rounded-full bg-[var(--tracker-soft)] p-1"
           aria-label="Session type"
         >
           {(["recorded", "timer"] as const).map((value) => (
@@ -90,7 +90,7 @@ export default function SessionDialog({
               type="button"
               aria-pressed={mode === value}
               onClick={() => setMode(value)}
-              className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${mode === value ? "bg-emerald-700 text-white" : "text-emerald-900"}`}
+              className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${mode === value ? "bg-[var(--tracker-action)] text-[var(--tracker-on-action)]" : "text-[var(--tracker-ink)]"}`}
             >
               {value === "recorded" ? "Log time" : "Focus timer"}
             </button>
@@ -100,12 +100,12 @@ export default function SessionDialog({
           <div>
             <span className="mb-2 block text-sm font-bold">Skill</span>
             <details ref={picker} className="relative">
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 text-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] p-3 text-sm">
                 {state.skills.find((s) => s.id === skillId)?.name ||
                   "Choose a skill"}
                 <ChevronDown size={17} />
               </summary>
-              <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-emerald-100 bg-white p-2 shadow-lg">
+              <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 shadow-lg">
                 {state.skills.map((skill) => (
                   <button
                     key={skill.id}
@@ -116,7 +116,7 @@ export default function SessionDialog({
                       picker.current?.removeAttribute("open");
                       picker.current?.querySelector("summary")?.focus();
                     }}
-                    className="block w-full rounded-lg p-3 text-left text-sm hover:bg-emerald-50"
+                    className="block w-full rounded-lg p-3 text-left text-sm hover:bg-[var(--tracker-hover)]"
                   >
                     {skill.name}
                   </button>
@@ -128,13 +128,13 @@ export default function SessionDialog({
                       setAdding(true);
                       picker.current?.removeAttribute("open");
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg p-3 text-sm font-bold text-emerald-700 hover:bg-emerald-50"
+                    className="flex w-full items-center gap-2 rounded-lg p-3 text-sm font-bold text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
                   >
                     <Plus size={16} />
                     Add a new skill
                   </button>
                 ) : (
-                  <p className="p-3 text-xs text-neutral-500">
+                  <p className="p-3 text-xs text-[var(--tracker-muted)]">
                     All six skill slots are in use.
                   </p>
                 )}
@@ -142,7 +142,7 @@ export default function SessionDialog({
             </details>
           </div>
           {adding && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+            <div className="rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] p-4">
               <SkillComposer
                 onCancel={() => setAdding(false)}
                 onSaved={(skill) => {
@@ -161,13 +161,15 @@ export default function SessionDialog({
                   key={value}
                   aria-pressed={minutes === value}
                   onClick={() => setMinutes(value)}
-                  className={`rounded-xl border p-2 text-sm font-bold transition-colors ${minutes === value ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 text-emerald-900"}`}
+                  className={`rounded-xl border p-2 text-sm font-bold transition-colors ${minutes === value ? "border-[var(--tracker-line)] bg-[var(--tracker-action)] text-[var(--tracker-on-action)]" : "border-[var(--tracker-line)] text-[var(--tracker-ink)]"}`}
                 >
                   {value} min
                 </button>
               ))}
             </div>
-            <DurationDial minutes={minutes} onChange={setMinutes} />
+            <div className={styles.durationDial}>
+              <DurationDial minutes={minutes} onChange={setMinutes} />
+            </div>
           </div>
           {mode === "recorded" && (
             <label className="block text-sm font-bold">
@@ -184,7 +186,9 @@ export default function SessionDialog({
           )}
           <label className="block text-sm font-bold">
             Description{" "}
-            <span className="font-normal text-neutral-500">(optional)</span>
+            <span className="font-normal text-[var(--tracker-muted)]">
+              (optional)
+            </span>
             <textarea
               name="notes"
               maxLength={2000}
@@ -194,12 +198,12 @@ export default function SessionDialog({
             />
           </label>
           {error && (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-sm text-[var(--tracker-error)]">
               {error}
             </p>
           )}
           {mode === "timer" && state.activeTimer && (
-            <p className="text-sm text-emerald-800">
+            <p className="text-sm text-[var(--tracker-ink)]">
               Finish or cancel your active timer before starting another.
             </p>
           )}
@@ -210,7 +214,7 @@ export default function SessionDialog({
               !skillId ||
               (mode === "timer" && !!state.activeTimer)
             }
-            className="w-full rounded-xl bg-emerald-700 p-3 font-bold text-white disabled:opacity-40"
+            className="w-full rounded-xl bg-[var(--tracker-action)] p-3 font-bold text-[var(--tracker-on-action)] disabled:opacity-40"
           >
             {busy
               ? "Saving…"

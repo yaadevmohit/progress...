@@ -10,7 +10,7 @@ import {
   type Skill,
 } from "./model";
 import styles from "./tracker.module.css";
-const COLORS = ["#ecefed", "#d1fae5", "#6ee7b7", "#34d399", "#059669"];
+const COLORS = ["#e4d9a8", "#f7bc65", "#ed8c48", "#d95a3c", "#a9322e"];
 function dateText(day: string, options: Intl.DateTimeFormatOptions) {
   return new Date(day + "T12:00:00Z").toLocaleDateString(undefined, {
     ...options,
@@ -89,7 +89,7 @@ export default function ActivityChart({
             Activity
           </h2>
           <p
-            className="mt-1 text-xs font-semibold text-neutral-500"
+            className="mt-1 text-xs font-semibold text-[var(--tracker-muted)]"
             aria-live="polite"
           >
             {title}
@@ -129,7 +129,7 @@ export default function ActivityChart({
               <button
                 type="button"
                 onClick={() => setSelection({ view, offset: 0 })}
-                className="rounded-lg px-2 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50"
+                className="rounded-lg px-2 py-2 text-xs font-bold text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
               >
                 Today
               </button>
@@ -179,7 +179,7 @@ export default function ActivityChart({
                   {description}
                 </span>
               </button>
-              <span className="mt-2 block text-center text-[10px] text-neutral-500">
+              <span className="mt-2 block text-center text-[10px] text-[var(--tracker-muted)]">
                 {view === "years"
                   ? bucket.start.slice(0, 4)
                   : view === "months"
@@ -197,7 +197,7 @@ export default function ActivityChart({
           );
         })}
       </div>
-      <div className="mt-auto flex justify-end gap-1.5 text-[11px] font-semibold text-neutral-500">
+      <div className="mt-auto flex justify-end gap-1.5 text-[11px] font-semibold text-[var(--tracker-muted)]">
         <span className="mr-1">Less</span>
         {COLORS.map((color) => (
           <span

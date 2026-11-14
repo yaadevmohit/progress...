@@ -46,12 +46,12 @@ export default function SkillComposer({
               onCancel();
             }
           }}
-          className="mt-2 w-full rounded-lg border border-emerald-200 bg-white p-2 text-neutral-900"
+          className="mt-2 w-full rounded-lg border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 text-[var(--tracker-ink)]"
           placeholder="e.g. Spanish"
         />
       </label>
       {error && (
-        <p role="alert" className="text-xs text-red-700">
+        <p role="alert" className="text-xs text-[var(--tracker-error)]">
           {error}
         </p>
       )}
@@ -60,7 +60,7 @@ export default function SkillComposer({
           type="button"
           disabled={busy || !name.trim()}
           onClick={() => void save()}
-          className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white disabled:opacity-40"
+          className="rounded-lg bg-[var(--tracker-action)] px-3 py-2 font-bold text-[var(--tracker-on-action)] disabled:opacity-40"
         >
           Add skill
         </button>

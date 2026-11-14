@@ -63,3 +63,5 @@ The server will derive `user_id` from a verified session, never trust one sent b
 Learning resources are optional and saved with each skill in local storage. Older saves without a `resources` field remain valid. The resource section supports multiple links, opens them in a new tab, and lets you remove saved links. Only HTTP/HTTPS URLs without embedded credentials are accepted. Resources do not affect learning totals or streaks.
 
 The skill grid displays existing cards in saved order followed by exactly one Add a skill card, until all six slots are used. The donut only allocates segments to skills with recorded learning time; its centre shows total learning time and the leading skill remains named below. Flame icons are orange for active streaks, flare when a count increases during use, and do not celebrate initial hydration of saved data.
+
+The tracker palette lives in CSS variables in `tracker.module.css`: yellow surfaces, red/brown text and warm chart colours. The header Log session button retains its green styling. The shared duration dial accepts scoped CSS colour variables, with green defaults for the original dashboard.

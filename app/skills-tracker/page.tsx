@@ -71,7 +71,9 @@ function Timer({
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="truncate text-sm font-bold">{name}</h2>
-        <span className="text-xs font-semibold text-emerald-700">In focus</span>
+        <span className="text-xs font-semibold text-[var(--tracker-ink)]">
+          In focus
+        </span>
       </div>
       <div className="relative mx-auto my-1 grid h-36 w-36 place-items-center">
         <svg
@@ -87,7 +89,11 @@ function Timer({
               x2="80"
               y2={i % 5 === 0 ? 23 : 18}
               transform={`rotate(${i * 6} 80 80)`}
-              stroke={i / 60 < ratio ? "#059669" : "#e5e7eb"}
+              stroke={
+                i / 60 < ratio
+                  ? "var(--tracker-action)"
+                  : "var(--tracker-chart-empty)"
+              }
               strokeWidth="2.5"
             />
           ))}
@@ -95,7 +101,7 @@ function Timer({
         <span
           role="timer"
           aria-label={`${Math.floor(remaining / 60)} minutes ${remaining % 60} seconds remaining`}
-          className="text-3xl font-bold tabular-nums text-emerald-950"
+          className="text-3xl font-bold tabular-nums text-[var(--tracker-ink)]"
         >
           {String(Math.floor(remaining / 60)).padStart(2, "0")}:
           {String(remaining % 60).padStart(2, "0")}
@@ -105,14 +111,14 @@ function Timer({
         <button
           disabled={busy || elapsed < 60}
           onClick={() => void action(true)}
-          className="font-bold text-emerald-800 disabled:opacity-35"
+          className="font-bold text-[var(--tracker-ink)] disabled:opacity-35"
         >
           Finish & save
         </button>
         <button
           disabled={busy}
           onClick={() => void action(false)}
-          className="text-neutral-500"
+          className="text-[var(--tracker-muted)]"
         >
           Cancel timer
         </button>
@@ -165,7 +171,7 @@ export default function SkillsTracker() {
           href="/skills-tracker"
           className="text-xl font-extrabold tracking-tight sm:text-2xl"
         >
-          Skills Tracker<span className="text-emerald-600">.</span>
+          Skills Tracker<span className="text-[var(--tracker-accent)]">.</span>
         </a>
         <div className="flex items-center gap-2">
           <button
@@ -203,16 +209,17 @@ export default function SkillsTracker() {
           <div className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Hello, learner<span className="text-emerald-600">.</span>
+                Hello, learner
+                <span className="text-[var(--tracker-accent)]">.</span>
               </h1>
-              <p className="mt-1 text-sm font-semibold text-neutral-500">
+              <p className="mt-1 text-sm font-semibold text-[var(--tracker-muted)]">
                 Make a little room for what you want to learn.
               </p>
             </div>
             <div
               aria-live="polite"
               aria-atomic="true"
-              className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800"
+              className="flex items-center gap-2 rounded-full bg-[var(--tracker-soft)] px-4 py-2 text-sm font-bold text-[var(--tracker-ink)]"
             >
               <StreakFlame count={streak} ready={ready && now !== null} />
               {streak}-day overall streak
@@ -221,7 +228,7 @@ export default function SkillsTracker() {
           {(storageError || error) && (
             <div
               role="alert"
-              className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+              className="mb-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-4 text-sm text-[var(--tracker-error)]"
             >
               {storageError || error}
               {!storageError && (
@@ -244,8 +251,8 @@ export default function SkillsTracker() {
             </div>
           )}
           {reminder && (
-            <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
-              <p className="text-xs leading-relaxed text-emerald-950">
+            <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] px-4 py-3">
+              <p className="text-xs leading-relaxed text-[var(--tracker-ink)]">
                 <strong>Learn here. Take your progress anywhere, soon.</strong>{" "}
                 Sign-in and sync are coming soon. For now, your progress stays
                 in this browser. Export a backup to keep a copy.
@@ -253,7 +260,7 @@ export default function SkillsTracker() {
               <button
                 onClick={() => void snooze()}
                 aria-label="Remind me again in two days"
-                className="shrink-0 rounded-lg p-1 text-emerald-700 hover:bg-emerald-100"
+                className="shrink-0 rounded-lg p-1 text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
               >
                 <X size={16} />
               </button>
@@ -264,19 +271,19 @@ export default function SkillsTracker() {
               <section
                 className={`${styles.panel} ${styles.leader} ${timer ? styles.compact : ""}`}
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tracker-muted)]">
                   The most practiced
                 </p>
                 <PracticeDonut skills={stats} />
-                <h2 className="break-words text-2xl font-bold text-emerald-800">
+                <h2 className="break-words text-2xl font-bold text-[var(--tracker-ink)]">
                   {leader?.name || "Your next chapter"}
                 </h2>
-                <p className="mt-2 text-sm font-semibold leading-relaxed text-neutral-500">
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-[var(--tracker-muted)]">
                   {leader
                     ? `${durationLabel(leader.seconds)} · ${share}% of your learning time.`
                     : "Add a skill and log your first session. Your most-practised skill will appear here."}
                 </p>
-                <div className="mt-auto flex items-center gap-2 pt-5 text-sm font-bold text-emerald-700">
+                <div className="mt-auto flex items-center gap-2 pt-5 text-sm font-bold text-[var(--tracker-ink)]">
                   <StreakFlame
                     key={leader?.id ?? "empty"}
                     count={leader?.streak ?? 0}
@@ -302,7 +309,7 @@ export default function SkillsTracker() {
             </div>
             <div className={styles.right}>
               <div className="flex items-center justify-end">
-                <span className="text-xs font-semibold text-neutral-400">
+                <span className="text-xs font-semibold text-[var(--tracker-muted)]">
                   {state.skills.length} / {MAX_SKILLS}
                 </span>
               </div>
@@ -312,12 +319,12 @@ export default function SkillsTracker() {
                   return (
                     <div
                       key={slot}
-                      className={`${styles.skill} ${skill ? "" : styles.empty}`}
+                      className={`${styles.skill} ${skill ? "" : editing === slot ? styles.composerCard : styles.empty}`}
                     >
                       {skill ? (
                         <>
                           <h3
-                            className="flex min-w-0 items-center gap-2 text-base font-bold text-emerald-800"
+                            className="flex min-w-0 items-center gap-2 text-base font-bold text-[var(--tracker-ink)]"
                             title={skill.name}
                           >
                             <span
@@ -329,11 +336,11 @@ export default function SkillsTracker() {
                             />
                             <span className="truncate">{skill.name}</span>
                           </h3>
-                          <div className="my-1 text-3xl font-bold tracking-tight text-neutral-900">
+                          <div className="my-1 text-3xl font-bold tracking-tight text-[var(--tracker-ink)]">
                             {durationLabel(skill.seconds)}
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-1">
-                            <span className="text-xs font-semibold text-emerald-700">
+                            <span className="text-xs font-semibold text-[var(--tracker-ink)]">
                               {skill.streak}-day streak
                             </span>
                             <div className="flex items-center gap-1">
@@ -341,7 +348,7 @@ export default function SkillsTracker() {
                               <button
                                 aria-label={`Log session for ${skill.name}`}
                                 onClick={() => setSession(skill.id)}
-                                className="rounded-lg p-1 text-emerald-700 hover:bg-emerald-50"
+                                className="rounded-lg p-1 text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
                               >
                                 <Plus size={17} />
                               </button>
@@ -358,13 +365,16 @@ export default function SkillsTracker() {
                         <button
                           disabled={!canEdit}
                           onClick={() => setEditing(slot)}
-                          className="flex h-full min-h-24 w-full flex-col items-center justify-center gap-2 rounded-xl text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-40"
+                          className={styles.addSkill}
                           aria-label={`Add skill in slot ${slot + 1}`}
                         >
-                          <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-50">
-                            <Plus size={20} />
-                          </span>
-                          <span className="text-xs font-bold">Add a skill</span>
+                          <Plus
+                            size={56}
+                            strokeWidth={5}
+                            strokeLinecap="butt"
+                            aria-hidden="true"
+                          />
+                          <span>Add a skill</span>
                         </button>
                       )}
                     </div>
@@ -383,7 +393,7 @@ export default function SkillsTracker() {
                   aria-busy="true"
                 >
                   <h2 className="text-xl font-bold">Activity</h2>
-                  <p className="text-sm text-neutral-400">
+                  <p className="text-sm text-[var(--tracker-muted)]">
                     Loading your learning history…
                   </p>
                 </section>
@@ -396,16 +406,18 @@ export default function SkillsTracker() {
             <h2 id="sessions-title" className="text-lg font-bold">
               Recent sessions
             </h2>
-            <span className="text-xs font-semibold text-neutral-400">
+            <span className="text-xs font-semibold text-[var(--tracker-muted)]">
               Saved on this device
             </span>
           </div>
           {!state.sessions.length ? (
-            <div className={`${styles.panel} text-sm text-neutral-500`}>
+            <div
+              className={`${styles.panel} text-sm text-[var(--tracker-muted)]`}
+            >
               Your learning sessions will appear here.
             </div>
           ) : (
-            <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-100">
+            <ul className="divide-y divide-[var(--tracker-line)] rounded-2xl border border-[var(--tracker-line)]">
               {[...state.sessions]
                 .sort(
                   (a, b) =>
@@ -419,15 +431,15 @@ export default function SkillsTracker() {
                     className="flex items-start justify-between gap-5 p-4"
                   >
                     <div>
-                      <h3 className="text-sm font-bold text-emerald-900">
+                      <h3 className="text-sm font-bold text-[var(--tracker-ink)]">
                         {state.skills.find((s) => s.id === item.skillId)?.name}
                       </h3>
                       {item.notes && (
-                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-neutral-500">
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--tracker-muted)]">
                           {item.notes}
                         </p>
                       )}
-                      <p className="mt-1 text-xs text-neutral-400">
+                      <p className="mt-1 text-xs text-[var(--tracker-muted)]">
                         {dateLabel(item.activityDate)},{" "}
                         {item.activityDate.slice(0, 4)} ·{" "}
                         {item.source === "timer"
@@ -442,7 +454,7 @@ export default function SkillsTracker() {
                 ))}
             </ul>
           )}
-          <p className="mt-6 text-center text-xs text-neutral-400">
+          <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
             Local storage only · No account or cloud sync yet
           </p>
         </section>

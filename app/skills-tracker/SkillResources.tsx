@@ -15,7 +15,7 @@ export default function SkillResources({ skill }: { skill: Skill }) {
         aria-haspopup="dialog"
         aria-label={`Resources for ${skill.name}`}
         onClick={() => setOpen(true)}
-        className="rounded-lg px-1 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"
+        className="rounded-lg px-1 py-1 text-[11px] font-bold text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
       >
         Resources{skill.resources?.length ? ` · ${skill.resources.length}` : ""}
       </button>
@@ -92,7 +92,7 @@ function ResourcesDialog({
             >
               Learning resources
             </h2>
-            <p className="mt-1 break-words text-sm font-bold text-emerald-700">
+            <p className="mt-1 break-words text-sm font-bold text-[var(--tracker-ink)]">
               {skill.name}
             </p>
           </div>
@@ -100,12 +100,12 @@ function ResourcesDialog({
             type="button"
             onClick={onClose}
             aria-label="Close resources"
-            className="rounded-lg p-2 hover:bg-neutral-100"
+            className="rounded-lg p-2 hover:bg-[var(--tracker-hover)]"
           >
             <X size={20} />
           </button>
         </div>
-        <p className="mt-3 text-sm font-semibold text-neutral-500">
+        <p className="mt-3 text-sm font-semibold text-[var(--tracker-muted)]">
           Optional. Keep your courses, guides and useful links together.
         </p>
         {skill.resources?.length ? (
@@ -113,13 +113,13 @@ function ResourcesDialog({
             {skill.resources.map((resource) => (
               <li
                 key={resource.id}
-                className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3"
+                className="flex items-center gap-2 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] p-3"
               >
                 <a
                   href={resource.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded text-sm font-bold text-emerald-900 hover:underline focus-visible:outline-2 focus-visible:outline-emerald-700"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded text-sm font-bold text-[var(--tracker-ink)] hover:underline focus-visible:outline-2 focus-visible:outline-[var(--tracker-action)]"
                 >
                   <span className="min-w-0 break-words">{resource.name}</span>
                   <ExternalLink size={14} className="shrink-0" />
@@ -130,7 +130,7 @@ function ResourcesDialog({
                   disabled={busy}
                   onClick={() => void remove(resource.id)}
                   aria-label={`Remove ${resource.name}`}
-                  className="rounded-lg p-2 text-neutral-500 hover:bg-white hover:text-red-700"
+                  className="rounded-lg p-2 text-[var(--tracker-muted)] hover:bg-[var(--tracker-hover)] hover:text-[var(--tracker-error)]"
                 >
                   <Trash2 size={15} />
                 </button>
@@ -138,13 +138,13 @@ function ResourcesDialog({
             ))}
           </ul>
         ) : (
-          <p className="my-5 rounded-xl border border-dashed border-emerald-200 p-4 text-sm text-neutral-500">
+          <p className="my-5 rounded-xl border border-dashed border-[var(--tracker-line)] p-4 text-sm text-[var(--tracker-muted)]">
             No resources yet. Add one whenever you find something helpful.
           </p>
         )}
         <form
           onSubmit={submit}
-          className="space-y-4 border-t border-neutral-100 pt-5"
+          className="space-y-4 border-t border-[var(--tracker-line)] pt-5"
         >
           <label className="block text-sm font-bold">
             Resource name
@@ -171,13 +171,13 @@ function ResourcesDialog({
             />
           </label>
           {error && (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-sm text-[var(--tracker-error)]">
               {error}
             </p>
           )}
           <button
             disabled={busy || !name.trim() || !url.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 p-3 font-extrabold text-white disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--tracker-action)] p-3 font-extrabold text-[var(--tracker-on-action)] disabled:opacity-40"
           >
             <Plus size={17} />
             {busy ? "Saving…" : "Add resource"}
