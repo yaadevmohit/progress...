@@ -519,12 +519,6 @@
   --tracker-error: #ffb1b1;
   --tracker-header: #0b1d51f5;
   --tracker-dial-tick: #bac8ed66;
-  --tracker-skill-0: #f7ce5b;
-  --tracker-skill-1: #ff9677;
-  --tracker-skill-2: #bbadff;
-  --tracker-skill-3: #72d6cc;
-  --tracker-skill-4: #f2a6ce;
-  --tracker-skill-5: #8bbcff;
   --tracker-heat-1: #536792;
   --tracker-heat-2: #8d9ebc;
   --tracker-heat-3: #c9c7a0;
@@ -700,4 +694,32 @@
     transform: rotate(calc(var(--theme-sun-opacity) * -100deg))
       scale(calc(0.6 + var(--theme-moon-opacity) * 0.4));
   }
+}
+
+.learnedSkill {
+  --skill-hover: #ffffff22;
+  border-color: #ffffff30;
+}
+.learnedSkill[data-ink="dark"] {
+  --skill-hover: #00000014;
+  border-color: #00000018;
+}
+.resourceTrigger,
+.skillAction {
+  color: inherit;
+}
+.resourceTrigger:hover,
+.skillAction:hover {
+  background: var(--skill-hover, var(--tracker-hover));
+}
+.learnedSkill .flameIdle {
+  color: inherit;
+  opacity: 0.7;
+}
+.learnedSkill .flameLit {
+  color: inherit;
+}
+.learnedSkill .resourceTrigger:focus-visible,
+.learnedSkill .skillAction:focus-visible {
+  outline-color: currentColor;
 }
