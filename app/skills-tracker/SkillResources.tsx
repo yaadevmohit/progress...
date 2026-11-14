@@ -15,7 +15,7 @@ export default function SkillResources({ skill }: { skill: Skill }) {
         aria-haspopup="dialog"
         aria-label={`Resources for ${skill.name}`}
         onClick={() => setOpen(true)}
-        className="rounded-lg px-1 py-1 text-[11px] font-bold text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
+        className={`${styles.resourceTrigger} rounded-lg px-1 py-1 text-[11px] font-bold`}
       >
         Resources{skill.resources?.length ? ` · ${skill.resources.length}` : ""}
       </button>

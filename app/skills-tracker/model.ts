@@ -2,12 +2,20 @@ export const MAX_SKILLS = 6;
 export const MAX_MINUTES = 1440;
 export const REMINDER_INTERVAL = 48 * 60 * 60 * 1000;
 export const COLORS = [
-  "#bf4035",
-  "#e57442",
-  "#8b353b",
-  "#d98c3e",
-  "#b35b62",
-  "#86513b",
+  "#640D5F",
+  "#B12C00",
+  "#EB5B00",
+  "#090040",
+  "#471396",
+  "#B13BFF",
+];
+export const SKILL_TEXT_COLORS = [
+  "#FFF8ED",
+  "#FFF8ED",
+  "#250D00",
+  "#FFF8ED",
+  "#FFF8ED",
+  "#100019",
 ];
 export type LearningResource = { id: string; name: string; url: string };
 

@@ -11,6 +11,7 @@ import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
   PRACTICE_COLORS,
+  SKILL_TEXT_COLORS,
   visibleSkillSlots,
   durationLabel,
   localDay,
@@ -366,28 +367,32 @@ export default function SkillsTracker() {
                   return (
                     <div
                       key={slot}
-                      className={`${styles.skill} ${skill ? "" : editing === slot ? styles.composerCard : styles.empty}`}
+                      className={`${styles.skill} ${skill ? styles.learnedSkill : editing === slot ? styles.composerCard : styles.empty}`}
+                      style={
+                        skill
+                          ? {
+                              backgroundColor: PRACTICE_COLORS[slot],
+                              color: SKILL_TEXT_COLORS[slot],
+                            }
+                          : undefined
+                      }
+                      data-ink={
+                        skill && (slot === 2 || slot === 5) ? "dark" : "light"
+                      }
                     >
                       {skill ? (
                         <>
                           <h3
-                            className="flex min-w-0 items-center gap-2 text-base font-bold text-[var(--tracker-ink)]"
+                            className="truncate text-base font-bold"
                             title={skill.name}
                           >
-                            <span
-                              aria-hidden="true"
-                              className="h-2.5 w-2.5 shrink-0 rounded-full"
-                              style={{
-                                backgroundColor: `var(--tracker-skill-${skill.slot}, ${PRACTICE_COLORS[skill.slot]})`,
-                              }}
-                            />
-                            <span className="truncate">{skill.name}</span>
+                            {skill.name}
                           </h3>
-                          <div className="my-1 text-3xl font-bold tracking-tight text-[var(--tracker-ink)]">
+                          <div className="my-1 text-3xl font-bold tracking-tight">
                             {durationLabel(skill.seconds)}
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-1">
-                            <span className="flex items-center gap-1 text-xs font-semibold text-[var(--tracker-ink)]">
+                            <span className="flex items-center gap-1 text-xs font-semibold">
                               <StreakFlame
                                 count={skill.streak}
                                 ready={ready && now !== null}
@@ -400,7 +405,7 @@ export default function SkillsTracker() {
                               <button
                                 aria-label={`Log session for ${skill.name}`}
                                 onClick={() => setSession(skill.id)}
-                                className="rounded-lg p-1 text-[var(--tracker-ink)] hover:bg-[var(--tracker-hover)]"
+                                className={`${styles.skillAction} rounded-lg p-1`}
                               >
                                 <Plus size={17} />
                               </button>
