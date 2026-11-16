@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { Download, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, Download, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
 import ThemeToggle from "./ThemeToggle";
 import ActivityChart from "./ActivityChart";
@@ -20,6 +20,7 @@ import {
   REMINDER_INTERVAL,
   skillStats,
   type ActiveTimer,
+  type LearningSession,
 } from "./model";
 import {
   cancelTimer,
@@ -30,6 +31,7 @@ import {
   useTracker,
 } from "./storage";
 import styles from "./tracker.module.css";
+import { playSessionAlert } from "./session-alert";
 function dateLabel(day: string) {
   return new Date(day + "T12:00:00Z").toLocaleDateString(undefined, {
     month: "short",
@@ -42,11 +44,13 @@ function Timer({
   name,
   now,
   onError,
+  onFinish,
 }: {
   timer: ActiveTimer;
   name: string;
   now: number;
   onError: (message: string) => void;
+  onFinish: (id: string, early?: boolean) => Promise<void>;
 }) {
   const remaining = Math.min(
       timer.minutes * 60,
@@ -58,7 +62,7 @@ function Timer({
   async function action(finish: boolean) {
     setBusy(true);
     try {
-      if (finish) await finishTimer(timer.id, true);
+      if (finish) await onFinish(timer.id, true);
       else await cancelTimer(timer.id);
     } catch (e) {
       onError((e as Error).message);
@@ -134,7 +138,9 @@ export default function SkillsTracker() {
   const today = now ? localDay(new Date(now)) : "2000-01-01";
   const [editing, setEditing] = useState<number | null>(null),
     [session, setSession] = useState<string | null>(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState(""),
+    [completed, setCompleted] = useState<LearningSession | null>(null);
   const attemptedTimer = useRef<string | null>(null);
   const stats = skillStats(state, today),
     leader = mostPractised(state, today),
@@ -142,6 +148,28 @@ export default function SkillsTracker() {
     total = stats.reduce((sum, s) => sum + s.seconds, 0),
     share = leader ? Math.round((leader.seconds / total) * 100) : 0;
   const timer = state.activeTimer;
+  const completeTimer = useCallback(async (id: string, early = false) => {
+    const saved = await finishTimer(id, early);
+    if (saved) {
+      setCompleted(saved);
+      setNotice("");
+      setError("");
+      playSessionAlert("finish");
+    }
+  }, [setCompleted, setNotice, setError]);
+  useEffect(() => {
+    const originalTitle = document.title;
+    return () => { document.title = originalTitle; };
+  }, []);
+  useEffect(() => {
+    if (timer && now !== null) {
+      const seconds = Math.min(timer.minutes * 60, Math.max(0, Math.ceil((timer.endsAt - now) / 1000)));
+      const countdown = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+      document.title = `${countdown} · Skills Tracker`;
+    } else {
+      document.title = completed ? "Session complete · Skills Tracker" : "Skills Tracker";
+    }
+  }, [timer, now, completed]);
   useEffect(() => {
     if (
       !timer ||
@@ -151,8 +179,8 @@ export default function SkillsTracker() {
     )
       return;
     attemptedTimer.current = timer.id;
-    void finishTimer(timer.id).catch((e) => setError((e as Error).message));
-  }, [timer, now]);
+    void completeTimer(timer.id).catch((e) => setError((e as Error).message));
+  }, [timer, now, completeTimer]);
   const reminder =
     ready &&
     now !== null &&
@@ -235,7 +263,7 @@ export default function SkillsTracker() {
                 <button
                   className="ml-3 underline"
                   onClick={() => {
-                    void finishTimer(timer.id)
+                    void completeTimer(timer.id)
                       .then(() => setError(""))
                       .catch((e) => setError(e.message));
                   }}
@@ -245,6 +273,16 @@ export default function SkillsTracker() {
               )}
             </div>
           )}
+          <div role="status" aria-live="polite" aria-atomic="true">
+            {notice && (
+              <div className={styles.sessionNotice}>
+                <p>{notice}</p>
+                <button className={styles.icon} onClick={() => setNotice("")} aria-label="Dismiss session alert">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </div>
           {reminder && (
             <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--tracker-ink)]">
@@ -264,7 +302,7 @@ export default function SkillsTracker() {
           <div className={styles.dashboard}>
             <div className={styles.left}>
               <section
-                className={`${styles.panel} ${styles.leader} ${timer ? styles.compact : ""}`}
+                className={`${styles.panel} ${styles.leader} ${timer || completed ? styles.compact : ""}`}
               >
                 <p className="text-xs font-bold uppercase tracking-widest text-[var(--tracker-muted)]">
                   The most practiced
@@ -352,7 +390,21 @@ export default function SkillsTracker() {
                   }
                   now={now}
                   onError={setError}
+                  onFinish={completeTimer}
                 />
+              )}
+              {!timer && completed && (
+                <section className={`${styles.panel} ${styles.completion}`} role="status" aria-live="polite" aria-atomic="true" aria-labelledby="completion-title">
+                  <button className={`${styles.icon} ${styles.completionClose}`} onClick={() => setCompleted(null)} aria-label="Dismiss session completion">
+                    <X size={18} />
+                  </button>
+                  <CheckCircle2 size={32} aria-hidden="true" className="mb-3 text-[var(--tracker-action)]" />
+                  <h2 id="completion-title" className="text-xl font-bold">Thank you for showing up!</h2>
+                  <p className="mt-3 text-sm font-semibold">
+                    Your {durationLabel(completed.durationSeconds)} session for {state.skills.find((skill) => skill.id === completed.skillId)?.name || "your skill"} is finished and saved.
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--tracker-muted)]">Every session moves you forward. Keep going, one small step at a time.</p>
+                </section>
               )}
             </div>
             <div className={styles.right}>
@@ -391,8 +443,8 @@ export default function SkillsTracker() {
                           <div className="my-1 text-3xl font-bold tracking-tight">
                             {durationLabel(skill.seconds)}
                           </div>
-                          <div className="flex flex-wrap items-center justify-between gap-1">
-                            <span className="flex items-center gap-1 text-xs font-semibold">
+                          <div className={styles.skillFooter}>
+                            <span className={styles.skillStreak}>
                               <StreakFlame
                                 count={skill.streak}
                                 ready={ready && now !== null}
@@ -400,7 +452,7 @@ export default function SkillsTracker() {
                               />
                               {skill.streak}-day streak
                             </span>
-                            <div className="flex items-center gap-1">
+                            <div className={styles.skillFooterActions}>
                               <SkillResources skill={skill} />
                               <button
                                 aria-label={`Log session for ${skill.name}`}
@@ -518,6 +570,11 @@ export default function SkillsTracker() {
       </main>
       {session !== null && (
         <SessionDialog
+          onStarted={(name, minutes) => {
+            setCompleted(null);
+            setNotice(`${name} timer started. You have ${minutes} ${minutes === 1 ? "minute" : "minutes"} to focus. You’ve got this!`);
+            playSessionAlert("start");
+          }}
           state={state}
           selected={session}
           onClose={() => setSession(null)}
