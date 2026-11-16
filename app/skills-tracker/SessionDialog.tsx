@@ -10,10 +10,12 @@ export default function SessionDialog({
   state,
   selected,
   onClose,
+  onStarted,
 }: {
   state: TrackerState;
   selected: string;
   onClose: () => void;
+  onStarted: (name: string, minutes: number) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     picker = useRef<HTMLDetailsElement>(null);
@@ -40,9 +42,10 @@ export default function SessionDialog({
     setError("");
     const data = new FormData(event.currentTarget);
     try {
-      if (mode === "timer")
+      if (mode === "timer") {
         await startTimer(skillId, minutes, String(data.get("notes") || ""));
-      else
+        onStarted(state.skills.find((skill) => skill.id === skillId)?.name || "Focus", minutes);
+      } else
         await logSession(
           skillId,
           minutes,
@@ -194,7 +197,7 @@ export default function SessionDialog({
               maxLength={2000}
               rows={2}
               className={styles.input}
-              placeholder="What did you work on?"
+              placeholder={mode === "timer" ? "What are you working on today?" : "What did you work on?"}
             />
           </label>
           {error && (

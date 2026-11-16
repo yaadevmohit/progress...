@@ -723,3 +723,73 @@
 .learnedSkill .skillAction:focus-visible {
   outline-color: currentColor;
 }
+
+.learnedSkill {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.skillFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #ffffff40;
+}
+.learnedSkill[data-ink="dark"] .skillFooter {
+  border-color: #00000026;
+}
+.skillStreak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 25px;
+}
+.skillFooterActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.sessionNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid var(--tracker-line);
+  border-radius: 14px;
+  background: var(--tracker-soft);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.completion {
+  position: relative;
+  padding-right: 40px;
+  animation: arrive 0.4s ease both;
+}
+.completionClose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+@container (max-width: 180px) {
+  .skillFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .skillFooterActions {
+    justify-content: space-between;
+    margin-left: 0;
+  }
+}
