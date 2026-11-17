@@ -6,7 +6,13 @@ import type { Skill } from "./model";
 import { addResource, removeResource } from "./storage";
 import styles from "./tracker.module.css";
 
-export default function SkillResources({ skill }: { skill: Skill }) {
+export default function SkillResources({
+  skill,
+  label = "Resources",
+}: {
+  skill: Skill;
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -17,7 +23,8 @@ export default function SkillResources({ skill }: { skill: Skill }) {
         onClick={() => setOpen(true)}
         className={`${styles.resourceTrigger} rounded-lg px-1 py-1 text-[11px] font-bold`}
       >
-        Resources{skill.resources?.length ? ` · ${skill.resources.length}` : ""}
+        {label}
+        {skill.resources?.length ? ` · ${skill.resources.length}` : ""}
       </button>
       {open && <ResourcesDialog skill={skill} onClose={() => setOpen(false)} />}
     </>

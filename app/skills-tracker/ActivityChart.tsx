@@ -27,10 +27,12 @@ export default function ActivityChart({
   skills,
   sessions,
   today,
+  skillName,
 }: {
   skills: Skill[];
   sessions: LearningSession[];
   today: string;
+  skillName?: string;
 }) {
   const [selection, setSelection] = useState<{
     view: ActivityView;
@@ -93,6 +95,14 @@ export default function ActivityChart({
         <div>
           <h2 id="activity-title" className="text-xl font-bold">
             Activity
+            {skillName && (
+              <span
+                className="ml-2 inline-block max-w-44 truncate align-middle text-xs font-bold text-[var(--tracker-muted)]"
+                title={skillName}
+              >
+                {skillName}
+              </span>
+            )}
           </h2>
           <p
             className="mt-1 text-xs font-semibold text-[var(--tracker-muted)]"

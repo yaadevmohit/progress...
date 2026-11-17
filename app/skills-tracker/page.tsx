@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
+import SkillDetail from "./SkillDetail";
 import ThemeToggle from "./ThemeToggle";
 import ActivityChart from "./ActivityChart";
 import PracticeDonut from "./PracticeDonut";
@@ -18,6 +19,7 @@ import {
   MAX_SKILLS,
   mostPractised,
   mostRecentSession,
+  focusSkill,
   REMINDER_INTERVAL,
   skillStats,
   type ActiveTimer,
@@ -142,12 +144,16 @@ export default function SkillsTracker() {
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [completed, setCompleted] = useState<LearningSession | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const attemptedTimer = useRef<string | null>(null);
   const stats = skillStats(state, today),
     leader = mostPractised(state, today),
     streak = currentStreak(state.sessions, today),
     total = stats.reduce((sum, s) => sum + s.seconds, 0),
     share = leader ? Math.round((leader.seconds / total) * 100) : 0;
+  const focused = selectedId ? focusSkill(state, selectedId, today) : null;
+  const selectedSkill = focused?.skill ?? null;
+  const activitySessions = focused?.sessions ?? state.sessions;
   const latestSession = mostRecentSession(state.sessions);
   const latestSkill = state.skills.find(
     (skill) => skill.id === latestSession?.skillId,
@@ -323,13 +329,19 @@ export default function SkillsTracker() {
               <section
                 className={`${styles.panel} ${styles.leader} ${timer || completed ? styles.compact : ""}`}
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-[var(--tracker-muted)]">
-                  The most practiced
-                </p>
-                <PracticeDonut skills={stats} />
-                <h2 className="break-words text-2xl font-bold text-[var(--tracker-ink)]">
-                  {leader?.name || "Your next chapter"}
-                </h2>
+                <PracticeDonut
+                  skills={stats}
+                  selectedId={selectedSkill?.id ?? null}
+                  onSelect={setSelectedId}
+                />
+                <div className={styles.leaderHeading}>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[var(--tracker-muted)]">
+                    The most practiced
+                  </p>
+                  <h2 className="mt-2 break-words text-2xl font-bold text-[var(--tracker-ink)]">
+                    {leader?.name || "Your next chapter"}
+                  </h2>
+                </div>
                 <p
                   className={`${styles.leaderIntro} mt-2 text-sm font-semibold leading-relaxed text-[var(--tracker-muted)]`}
                 >
@@ -439,93 +451,107 @@ export default function SkillsTracker() {
               )}
             </div>
             <div className={styles.right}>
-              <div className="flex items-center justify-end">
-                <span className="text-xs font-semibold text-[var(--tracker-muted)]">
-                  {state.skills.length} / {MAX_SKILLS}
-                </span>
-              </div>
-              <div className={styles.skills}>
-                {visibleSkillSlots(state.skills).map((slot) => {
-                  const skill = stats.find((s) => s.slot === slot);
-                  return (
-                    <div
-                      key={slot}
-                      className={`${styles.skill} ${skill ? styles.learnedSkill : editing === slot ? styles.composerCard : styles.empty}`}
-                      style={
-                        skill
-                          ? {
-                              backgroundColor: PRACTICE_COLORS[slot],
-                              color: SKILL_TEXT_COLORS[slot],
-                            }
-                          : undefined
-                      }
-                      data-ink={
-                        skill && (slot === 2 || slot === 5) ? "dark" : "light"
-                      }
-                    >
-                      {skill ? (
-                        <>
-                          <h3
-                            className="truncate text-base font-bold"
-                            title={skill.name}
-                          >
-                            {skill.name}
-                          </h3>
-                          <div className="my-1 text-3xl font-bold tracking-tight">
-                            {durationLabel(skill.seconds)}
-                          </div>
-                          <div className={styles.skillFooter}>
-                            <span className={styles.skillStreak}>
-                              <StreakFlame
-                                count={skill.streak}
-                                ready={ready && now !== null}
-                                size={14}
-                              />
-                              {skill.streak}-day streak
-                            </span>
-                            <div className={styles.skillFooterActions}>
-                              <SkillResources skill={skill} />
-                              <button
-                                aria-label={`Log session for ${skill.name}`}
-                                onClick={() => setSession(skill.id)}
-                                className={`${styles.skillAction} rounded-lg p-1`}
-                              >
-                                <Plus size={17} />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      ) : editing === slot ? (
-                        <SkillComposer
-                          slot={slot}
-                          onSaved={() => setEditing(null)}
-                          onCancel={() => setEditing(null)}
-                        />
-                      ) : (
-                        <button
-                          disabled={!canEdit}
-                          onClick={() => setEditing(slot)}
-                          className={styles.addSkill}
-                          aria-label={`Add skill in slot ${slot + 1}`}
+              {selectedSkill ? (
+                <SkillDetail
+                  skill={selectedSkill}
+                  sessions={activitySessions}
+                  onBack={() => setSelectedId(null)}
+                  onLog={() => setSession(selectedSkill.id)}
+                />
+              ) : (
+                <>
+                  <div className="flex items-center justify-end">
+                    <span className="text-xs font-semibold text-[var(--tracker-muted)]">
+                      {state.skills.length} / {MAX_SKILLS}
+                    </span>
+                  </div>
+                  <div className={styles.skills}>
+                    {visibleSkillSlots(state.skills).map((slot) => {
+                      const skill = stats.find((s) => s.slot === slot);
+                      return (
+                        <div
+                          key={slot}
+                          className={`${styles.skill} ${skill ? styles.learnedSkill : editing === slot ? styles.composerCard : styles.empty}`}
+                          style={
+                            skill
+                              ? {
+                                  backgroundColor: PRACTICE_COLORS[slot],
+                                  color: SKILL_TEXT_COLORS[slot],
+                                }
+                              : undefined
+                          }
+                          data-ink={
+                            skill && (slot === 2 || slot === 5)
+                              ? "dark"
+                              : "light"
+                          }
                         >
-                          <Plus
-                            size={56}
-                            strokeWidth={5}
-                            strokeLinecap="butt"
-                            aria-hidden="true"
-                          />
-                          <span>Add a skill</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                          {skill ? (
+                            <>
+                              <h3
+                                className="truncate text-base font-bold"
+                                title={skill.name}
+                              >
+                                {skill.name}
+                              </h3>
+                              <div className="my-1 text-3xl font-bold tracking-tight">
+                                {durationLabel(skill.seconds)}
+                              </div>
+                              <div className={styles.skillFooter}>
+                                <span className={styles.skillStreak}>
+                                  <StreakFlame
+                                    count={skill.streak}
+                                    ready={ready && now !== null}
+                                    size={14}
+                                  />
+                                  {skill.streak}-day streak
+                                </span>
+                                <div className={styles.skillFooterActions}>
+                                  <SkillResources skill={skill} />
+                                  <button
+                                    aria-label={`Log session for ${skill.name}`}
+                                    onClick={() => setSession(skill.id)}
+                                    className={`${styles.skillAction} rounded-lg p-1`}
+                                  >
+                                    <Plus size={17} />
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          ) : editing === slot ? (
+                            <SkillComposer
+                              slot={slot}
+                              onSaved={() => setEditing(null)}
+                              onCancel={() => setEditing(null)}
+                            />
+                          ) : (
+                            <button
+                              disabled={!canEdit}
+                              onClick={() => setEditing(slot)}
+                              className={styles.addSkill}
+                              aria-label={`Add skill in slot ${slot + 1}`}
+                            >
+                              <Plus
+                                size={56}
+                                strokeWidth={5}
+                                strokeLinecap="butt"
+                                aria-hidden="true"
+                              />
+                              <span>Add a skill</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
               {ready && now ? (
                 <ActivityChart
-                  skills={state.skills}
-                  sessions={state.sessions}
+                  skills={selectedSkill ? [selectedSkill] : state.skills}
+                  sessions={activitySessions}
                   today={today}
+                  skillName={selectedSkill?.name}
                 />
               ) : (
                 <section
@@ -541,63 +567,68 @@ export default function SkillsTracker() {
             </div>
           </div>
         </div>
-        <section className="pb-10 pt-6" aria-labelledby="sessions-title">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="sessions-title" className="text-lg font-bold">
-              Recent sessions
-            </h2>
-            <span className="text-xs font-semibold text-[var(--tracker-muted)]">
-              Saved on this device
-            </span>
-          </div>
-          {!state.sessions.length ? (
-            <div
-              className={`${styles.panel} text-sm text-[var(--tracker-muted)]`}
-            >
-              Your learning sessions will appear here.
+        {!selectedSkill && (
+          <section className="pb-10 pt-6" aria-labelledby="sessions-title">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id="sessions-title" className="text-lg font-bold">
+                Recent sessions
+              </h2>
+              <span className="text-xs font-semibold text-[var(--tracker-muted)]">
+                Saved on this device
+              </span>
             </div>
-          ) : (
-            <ul className="divide-y divide-[var(--tracker-line)] rounded-2xl border border-[var(--tracker-line)]">
-              {[...state.sessions]
-                .sort(
-                  (a, b) =>
-                    b.activityDate.localeCompare(a.activityDate) ||
-                    b.createdAt.localeCompare(a.createdAt),
-                )
-                .slice(0, 20)
-                .map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-start justify-between gap-5 p-4"
-                  >
-                    <div>
-                      <h3 className="text-sm font-bold text-[var(--tracker-ink)]">
-                        {state.skills.find((s) => s.id === item.skillId)?.name}
-                      </h3>
-                      {item.notes && (
-                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--tracker-muted)]">
-                          {item.notes}
+            {!state.sessions.length ? (
+              <div
+                className={`${styles.panel} text-sm text-[var(--tracker-muted)]`}
+              >
+                Your learning sessions will appear here.
+              </div>
+            ) : (
+              <ul className="divide-y divide-[var(--tracker-line)] rounded-2xl border border-[var(--tracker-line)]">
+                {[...state.sessions]
+                  .sort(
+                    (a, b) =>
+                      b.activityDate.localeCompare(a.activityDate) ||
+                      b.createdAt.localeCompare(a.createdAt),
+                  )
+                  .slice(0, 20)
+                  .map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-start justify-between gap-5 p-4"
+                    >
+                      <div>
+                        <h3 className="text-sm font-bold text-[var(--tracker-ink)]">
+                          {
+                            state.skills.find((s) => s.id === item.skillId)
+                              ?.name
+                          }
+                        </h3>
+                        {item.notes && (
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--tracker-muted)]">
+                            {item.notes}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-[var(--tracker-muted)]">
+                          {dateLabel(item.activityDate)},{" "}
+                          {item.activityDate.slice(0, 4)} ·{" "}
+                          {item.source === "timer"
+                            ? "Focus timer"
+                            : "Logged time"}
                         </p>
-                      )}
-                      <p className="mt-1 text-xs text-[var(--tracker-muted)]">
-                        {dateLabel(item.activityDate)},{" "}
-                        {item.activityDate.slice(0, 4)} ·{" "}
-                        {item.source === "timer"
-                          ? "Focus timer"
-                          : "Logged time"}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm font-bold">
-                      {durationLabel(item.durationSeconds)}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          )}
-          <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
-            Local storage only · No account or cloud sync yet
-          </p>
-        </section>
+                      </div>
+                      <span className="shrink-0 text-sm font-bold">
+                        {durationLabel(item.durationSeconds)}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+            <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
+              Local storage only · No account or cloud sync yet
+            </p>
+          </section>
+        )}
       </main>
       {session !== null && (
         <SessionDialog

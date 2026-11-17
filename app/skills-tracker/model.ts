@@ -118,6 +118,21 @@ export function skillStats(state: TrackerState, today: string) {
     };
   });
 }
+export function focusSkill(
+  state: TrackerState,
+  skillId: string,
+  today: string,
+) {
+  const skill = skillStats(state, today).find((skill) => skill.id === skillId);
+  return skill
+    ? {
+        skill,
+        sessions: state.sessions.filter(
+          (session) => session.skillId === skillId,
+        ),
+      }
+    : null;
+}
 export function mostRecentSession(sessions: LearningSession[]) {
   return (
     [...sessions].sort(
