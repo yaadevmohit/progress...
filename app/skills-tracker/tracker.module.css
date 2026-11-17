@@ -900,3 +900,77 @@
   margin-top: 20px;
   padding-top: 20px;
 }
+
+.learnedSkill {
+  position: relative;
+}
+.skillActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transform: translateY(-3px);
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+.skillActions button {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  min-height: 28px;
+  border-radius: 7px;
+}
+.learnedSkill:hover .skillActions,
+.learnedSkill:focus-within .skillActions,
+.inlineActions {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.inlineActions {
+  position: static;
+}
+.actionButton {
+  border-radius: 12px;
+  background: var(--tracker-action);
+  color: var(--tracker-on-action);
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.actionButton:disabled {
+  opacity: 0.45;
+}
+.statusBadge {
+  display: inline-block;
+  margin-left: 6px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 700;
+  vertical-align: middle;
+  text-transform: lowercase;
+}
+.sessionDelete {
+  color: var(--tracker-muted);
+  opacity: 0.65;
+}
+.sessionDelete:hover,
+.sessionDelete:focus-visible {
+  opacity: 1;
+  background: var(--tracker-hover);
+  color: var(--tracker-error);
+}
+@media (hover: none) {
+  .skillActions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}

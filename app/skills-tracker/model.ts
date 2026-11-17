@@ -38,6 +38,9 @@ export type Skill = {
   slot: number;
   color: string;
   resources?: LearningResource[];
+  description?: string;
+  status?: "active" | "archived" | "deleted";
+  deactivatedAt?: string;
   createdAt: string;
 };
 export type LearningSession = {
@@ -50,6 +53,10 @@ export type LearningSession = {
   createdAt: string;
   timeZone: string;
 };
+export type PracticeEntry = Pick<
+  LearningSession,
+  "id" | "skillId" | "durationSeconds" | "activityDate"
+>;
 export type ActiveTimer = {
   id: string;
   skillId: string;
@@ -63,6 +70,7 @@ export type TrackerState = {
   version: 1;
   skills: Skill[];
   sessions: LearningSession[];
+  retainedPractice?: PracticeEntry[];
   activeTimer: ActiveTimer | null;
   reminderDismissedAt: number | null;
 };
@@ -89,7 +97,7 @@ export function shiftDay(day: string, amount: number) {
   date.setUTCDate(date.getUTCDate() + amount);
   return date.toISOString().slice(0, 10);
 }
-export function currentStreak(sessions: LearningSession[], today: string) {
+export function currentStreak(sessions: PracticeEntry[], today: string) {
   const days = new Set(
     sessions
       .filter((s) => s.durationSeconds > 0 && s.activityDate <= today)
@@ -103,13 +111,28 @@ export function currentStreak(sessions: LearningSession[], today: string) {
   }
   return streak;
 }
+export function isActiveSkill(skill: Skill) {
+  return !skill.status || skill.status === "active";
+}
+export function activeSkills(skills: Skill[]) {
+  return skills.filter(isActiveSkill);
+}
+export function practiceHistory(state: TrackerState): PracticeEntry[] {
+  return [...state.sessions, ...(state.retainedPractice ?? [])];
+}
 export function skillStats(state: TrackerState, today: string) {
+  const history = practiceHistory(state);
   return state.skills.map((skill) => {
     const sessions = state.sessions.filter((s) => s.skillId === skill.id);
     return {
       ...skill,
-      seconds: sessions.reduce((sum, s) => sum + s.durationSeconds, 0),
-      streak: currentStreak(sessions, today),
+      seconds: history
+        .filter((s) => s.skillId === skill.id)
+        .reduce((sum, s) => sum + s.durationSeconds, 0),
+      streak: currentStreak(
+        history.filter((s) => s.skillId === skill.id),
+        today,
+      ),
       lastSession: [...sessions].sort(
         (a, b) =>
           b.activityDate.localeCompare(a.activityDate) ||
@@ -128,6 +151,9 @@ export function focusSkill(
     ? {
         skill,
         sessions: state.sessions.filter(
+          (session) => session.skillId === skillId,
+        ),
+        activity: practiceHistory(state).filter(
           (session) => session.skillId === skillId,
         ),
       }
@@ -162,7 +188,7 @@ export function durationLabel(seconds: number) {
     : `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ""}`;
 }
 export function weeklyActivity(
-  sessions: LearningSession[],
+  sessions: PracticeEntry[],
   today: string,
   monthOffset = 0,
 ) {
@@ -225,8 +251,7 @@ export function decodeTracker(raw: string): {
       !object(value) ||
       value.version !== 1 ||
       !Array.isArray(value.skills) ||
-      !Array.isArray(value.sessions) ||
-      value.skills.length > MAX_SKILLS
+      !Array.isArray(value.sessions)
     )
       throw Error();
     const ids = new Set<string>(),
@@ -245,7 +270,13 @@ export function decodeTracker(raw: string): {
         skill.slot >= MAX_SKILLS ||
         typeof skill.color !== "string" ||
         !/^#[0-9a-fA-F]{6}$/.test(skill.color) ||
-        !iso(skill.createdAt)
+        !iso(skill.createdAt) ||
+        (skill.description !== undefined &&
+          (typeof skill.description !== "string" ||
+            skill.description.length > 2000)) ||
+        (skill.status !== undefined &&
+          !["active", "archived", "deleted"].includes(String(skill.status))) ||
+        (skill.deactivatedAt !== undefined && !iso(skill.deactivatedAt))
       )
         throw Error();
       // Older saves have no resources field; keep them readable without a reset.
@@ -267,12 +298,14 @@ export function decodeTracker(raw: string): {
           resourceIds.add(resource.id);
         }
       }
-      const name = skill.name.trim().toLowerCase();
-      if (ids.has(skill.id) || names.has(name) || slots.has(skill.slot))
-        throw Error();
+      if (ids.has(skill.id)) throw Error();
       ids.add(skill.id);
-      names.add(name);
-      slots.add(skill.slot);
+      if (!skill.status || skill.status === "active") {
+        const name = skill.name.trim().toLowerCase();
+        if (names.has(name) || slots.has(skill.slot)) throw Error();
+        names.add(name);
+        slots.add(skill.slot);
+      }
     }
     const sessionIds = new Set<string>();
     for (const session of value.sessions) {
@@ -297,6 +330,25 @@ export function decodeTracker(raw: string): {
         throw Error();
       sessionIds.add(session.id);
     }
+    if (value.retainedPractice !== undefined) {
+      if (!Array.isArray(value.retainedPractice)) throw Error();
+      for (const entry of value.retainedPractice) {
+        if (
+          !object(entry) ||
+          !id(entry.id) ||
+          sessionIds.has(entry.id) ||
+          !id(entry.skillId) ||
+          !ids.has(entry.skillId) ||
+          typeof entry.durationSeconds !== "number" ||
+          !Number.isInteger(entry.durationSeconds) ||
+          entry.durationSeconds < 60 ||
+          entry.durationSeconds > MAX_MINUTES * 60 ||
+          !validDay(entry.activityDate)
+        )
+          throw Error();
+        sessionIds.add(entry.id);
+      }
+    }
     const timer = value.activeTimer;
     if (timer !== null) {
       if (
@@ -304,6 +356,12 @@ export function decodeTracker(raw: string): {
         !id(timer.id) ||
         !id(timer.skillId) ||
         !ids.has(timer.skillId) ||
+        !value.skills.some(
+          (skill) =>
+            object(skill) &&
+            skill.id === timer.skillId &&
+            (!skill.status || skill.status === "active"),
+        ) ||
         typeof timer.minutes !== "number" ||
         !Number.isInteger(timer.minutes) ||
         timer.minutes < 1 ||
@@ -325,7 +383,19 @@ export function decodeTracker(raw: string): {
         value.reminderDismissedAt < 0)
     )
       throw Error();
-    return { state: value as TrackerState, error: null };
+    const state = value as TrackerState;
+    return {
+      state: {
+        ...state,
+        skills: state.skills.map((skill) => ({
+          ...skill,
+          description: skill.description ?? "",
+          status: skill.status ?? "active",
+        })),
+        retainedPractice: state.retainedPractice ?? [],
+      },
+      error: null,
+    };
   } catch {
     return {
       state: EMPTY_STATE,
@@ -339,7 +409,7 @@ export const PRACTICE_COLORS = COLORS;
 
 // Preserve card order from the saved skills, then append one available slot.
 export function visibleSkillSlots(skills: Skill[]) {
-  const slots = skills.map((skill) => skill.slot);
+  const slots = activeSkills(skills).map((skill) => skill.slot);
   const next = Array.from({ length: MAX_SKILLS }, (_, slot) => slot).find(
     (slot) => !slots.includes(slot),
   );
@@ -347,7 +417,13 @@ export function visibleSkillSlots(skills: Skill[]) {
 }
 
 export function practiceBreakdown(
-  skills: { id: string; name: string; slot: number; seconds: number }[],
+  skills: {
+    id: string;
+    name: string;
+    slot: number;
+    seconds: number;
+    status?: Skill["status"];
+  }[],
 ) {
   const total = skills.reduce((sum, skill) => sum + skill.seconds, 0);
   let offset = 0;
@@ -369,7 +445,7 @@ export function practiceBreakdown(
 export type ActivityView = "weeks" | "months" | "years";
 export function activityHistory(
   skills: Skill[],
-  sessions: LearningSession[],
+  sessions: PracticeEntry[],
   today: string,
 ) {
   const dates = [
@@ -390,7 +466,7 @@ export function activityHistory(
 }
 export function activityTimeline(
   skills: Skill[],
-  sessions: LearningSession[],
+  sessions: PracticeEntry[],
   today: string,
   view: ActivityView,
   offset = 0,

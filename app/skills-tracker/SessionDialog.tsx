@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import DurationDial from "../ui/components/DurationDial";
 import SkillComposer from "./SkillComposer";
-import { localDay, type TrackerState } from "./model";
+import { activeSkills, localDay, type TrackerState } from "./model";
 import { logSession, startTimer } from "./storage";
 import styles from "./tracker.module.css";
 export default function SessionDialog({
@@ -19,8 +19,9 @@ export default function SessionDialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     picker = useRef<HTMLDetailsElement>(null);
-  const [skillId, setSkillId] = useState(selected || state.skills[0]?.id || ""),
-    [adding, setAdding] = useState(!state.skills.length),
+  const available = activeSkills(state.skills);
+  const [skillId, setSkillId] = useState(selected || available[0]?.id || ""),
+    [adding, setAdding] = useState(!available.length),
     [minutes, setMinutes] = useState(25),
     [mode, setMode] = useState<"recorded" | "timer">("recorded"),
     [error, setError] = useState(""),
@@ -44,7 +45,10 @@ export default function SessionDialog({
     try {
       if (mode === "timer") {
         await startTimer(skillId, minutes, String(data.get("notes") || ""));
-        onStarted(state.skills.find((skill) => skill.id === skillId)?.name || "Focus", minutes);
+        onStarted(
+          state.skills.find((skill) => skill.id === skillId)?.name || "Focus",
+          minutes,
+        );
       } else
         await logSession(
           skillId,
@@ -109,7 +113,7 @@ export default function SessionDialog({
                 <ChevronDown size={17} />
               </summary>
               <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 shadow-lg">
-                {state.skills.map((skill) => (
+                {available.map((skill) => (
                   <button
                     key={skill.id}
                     type="button"
@@ -124,7 +128,7 @@ export default function SessionDialog({
                     {skill.name}
                   </button>
                 ))}
-                {state.skills.length < 6 ? (
+                {available.length < 6 ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -197,7 +201,11 @@ export default function SessionDialog({
               maxLength={2000}
               rows={2}
               className={styles.input}
-              placeholder={mode === "timer" ? "What are you working on today?" : "What did you work on?"}
+              placeholder={
+                mode === "timer"
+                  ? "What are you working on today?"
+                  : "What did you work on?"
+              }
             />
           </label>
           {error && (

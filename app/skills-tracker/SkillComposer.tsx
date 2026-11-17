@@ -12,13 +12,14 @@ export default function SkillComposer({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(""),
+    [description, setDescription] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function save() {
     if (busy) return;
     setBusy(true);
     try {
-      onSaved(await addSkill(name, slot));
+      onSaved(await addSkill(name, slot, description));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -48,6 +49,16 @@ export default function SkillComposer({
           }}
           className="mt-2 w-full rounded-lg border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 text-[var(--tracker-ink)]"
           placeholder="e.g. Spanish"
+        />
+      </label>
+      <label className="block text-xs font-bold">
+        Description (optional)
+        <textarea
+          rows={2}
+          maxLength={2000}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="mt-2 w-full rounded-lg border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 text-[var(--tracker-ink)]"
         />
       </label>
       {error && (

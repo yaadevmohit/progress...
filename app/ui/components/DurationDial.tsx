@@ -95,7 +95,7 @@ export default function DurationDial({ minutes, onChange }: DurationDialProps) {
         >
           {TICKS.map((tick) => (
             <span key={tick} className="grid w-4 shrink-0 justify-items-center">
-              <span className={`w-0.5 rounded-full bg-[var(--dial-tick,#065f464d)] ${tick % 5 === 0 ? "h-4" : "h-2.5"}`} />
+              <span className={`w-0.5 rounded-full bg-(--dial-tick,#065f464d) ${tick % 5 === 0 ? "h-4" : "h-2.5"}`} />
             </span>
           ))}
         </div>

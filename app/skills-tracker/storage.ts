@@ -2,6 +2,8 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
   COLORS,
+  activeSkills,
+  isActiveSkill,
   decodeTracker,
   EMPTY_STATE,
   localDay,
@@ -75,17 +77,21 @@ async function mutate<T>(
 export async function addSkill(
   name: string,
   requestedSlot?: number,
+  description = "",
 ): Promise<Skill> {
   return mutate((state) => {
     const clean = name.trim();
     if (!clean || clean.length > 60)
       throw new Error("Enter a skill name between 1 and 60 characters.");
-    if (state.skills.length >= MAX_SKILLS)
+    if (description.trim().length > 2000)
+      throw new Error("Keep the description under 2,000 characters.");
+    const active = activeSkills(state.skills);
+    if (active.length >= MAX_SKILLS)
       throw new Error("You can learn up to six skills at a time.");
-    if (state.skills.some((s) => s.name.toLowerCase() === clean.toLowerCase()))
+    if (active.some((s) => s.name.toLowerCase() === clean.toLowerCase()))
       throw new Error("That skill is already on your dashboard.");
     const free = Array.from({ length: MAX_SKILLS }, (_, i) => i).filter(
-      (i) => !state.skills.some((s) => s.slot === i),
+      (i) => !active.some((s) => s.slot === i),
     );
     const slot =
       requestedSlot !== undefined && free.includes(requestedSlot)
@@ -96,6 +102,8 @@ export async function addSkill(
       name: clean,
       slot,
       color: COLORS[slot],
+      description: description.trim(),
+      status: "active" as const,
       createdAt: new Date().toISOString(),
     };
     return {
@@ -111,7 +119,7 @@ function ensureSession(
   date: string,
   notes: string,
 ) {
-  if (!state.skills.some((s) => s.id === skillId))
+  if (!state.skills.some((s) => s.id === skillId && isActiveSkill(s)))
     throw new Error("Choose a skill that’s on your dashboard.");
   if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_MINUTES)
     throw new Error(
@@ -199,7 +207,9 @@ export async function finishTimer(timerId: string, early = false) {
       state: {
         ...state,
         activeTimer: null,
-        sessions: state.sessions.some((s) => s.id === timer.id)
+        sessions: [...state.sessions, ...(state.retainedPractice ?? [])].some(
+          (s) => s.id === timer.id,
+        )
           ? state.sessions
           : [session, ...state.sessions],
       },
@@ -253,7 +263,8 @@ export function useClock() {
 export async function addResource(skillId: string, name: string, link: string) {
   return mutate((state) => {
     const skill = state.skills.find((item) => item.id === skillId);
-    if (!skill) throw new Error("This skill is no longer available.");
+    if (!skill || skill.status === "deleted")
+      throw new Error("This skill is no longer available.");
     const clean = name.trim();
     if (!clean || clean.length > 100)
       throw new Error("Enter a resource name between 1 and 100 characters.");
@@ -282,20 +293,173 @@ export async function addResource(skillId: string, name: string, link: string) {
   });
 }
 export async function removeResource(skillId: string, resourceId: string) {
-  return mutate((state) => ({
-    state: {
-      ...state,
-      skills: state.skills.map((skill) =>
-        skill.id === skillId
-          ? {
-              ...skill,
-              resources: (skill.resources ?? []).filter(
-                (item) => item.id !== resourceId,
-              ),
-            }
-          : skill,
-      ),
-    },
-    result: null,
-  }));
+  return mutate((state) => {
+    if (
+      state.skills.find((skill) => skill.id === skillId)?.status === "deleted"
+    )
+      throw new Error("Deleted skills cannot be edited.");
+    return {
+      state: {
+        ...state,
+        skills: state.skills.map((skill) =>
+          skill.id === skillId
+            ? {
+                ...skill,
+                resources: (skill.resources ?? []).filter(
+                  (item) => item.id !== resourceId,
+                ),
+              }
+            : skill,
+        ),
+      },
+      result: null,
+    };
+  });
+}
+
+export async function updateSkill(
+  skillId: string,
+  name: string,
+  description: string,
+  resources: import("./model").LearningResource[],
+) {
+  return mutate((state) => {
+    const skill = state.skills.find((s) => s.id === skillId);
+    if (!skill || skill.status === "deleted")
+      throw new Error("This skill cannot be edited.");
+    const clean = name.trim();
+    if (!clean || clean.length > 60)
+      throw new Error("Enter a skill name between 1 and 60 characters.");
+    if (description.trim().length > 2000)
+      throw new Error("Keep the description under 2,000 characters.");
+    if (
+      isActiveSkill(skill) &&
+      activeSkills(state.skills).some(
+        (s) => s.id !== skillId && s.name.toLowerCase() === clean.toLowerCase(),
+      )
+    )
+      throw new Error("That skill is already on your dashboard.");
+    const links = new Set<string>(),
+      ids = new Set<string>();
+    const normalized = resources
+      .filter((r) => r.name.trim() || r.url.trim())
+      .map((resource) => {
+        const label = resource.name.trim();
+        if (!label || label.length > 100)
+          throw new Error("Give each resource a name of up to 100 characters.");
+        let url: string;
+        try {
+          url = resourceUrl(resource.url);
+        } catch {
+          throw new Error("Give each resource a valid http or https link.");
+        }
+        if (links.has(url) || ids.has(resource.id))
+          throw new Error("Each resource needs a unique link.");
+        links.add(url);
+        ids.add(resource.id);
+        return { ...resource, name: label, url };
+      });
+    return {
+      state: {
+        ...state,
+        skills: state.skills.map((s) =>
+          s.id === skillId
+            ? {
+                ...s,
+                name: clean,
+                description: description.trim(),
+                resources: normalized,
+              }
+            : s,
+        ),
+      },
+      result: null,
+    };
+  });
+}
+export async function deactivateSkill(
+  skillId: string,
+  status: "archived" | "deleted",
+) {
+  return mutate((state) => {
+    const skill = state.skills.find((s) => s.id === skillId);
+    if (!skill) throw new Error("Skill not found.");
+    if (skill.status === "deleted")
+      throw new Error("This skill has already been deleted.");
+    if (state.activeTimer?.skillId === skillId)
+      throw new Error("Finish or cancel the timer for this skill first.");
+    return {
+      state: {
+        ...state,
+        skills: state.skills.map((s) =>
+          s.id === skillId
+            ? { ...s, status, deactivatedAt: new Date().toISOString() }
+            : s,
+        ),
+      },
+      result: null,
+    };
+  });
+}
+export async function restoreSkill(skillId: string) {
+  return mutate((state) => {
+    const skill = state.skills.find((s) => s.id === skillId);
+    if (!skill || skill.status !== "archived")
+      throw new Error("Only archived skills can be restored.");
+    const active = activeSkills(state.skills);
+    if (active.length >= MAX_SKILLS)
+      throw new Error("Make room in your six active skill slots first.");
+    if (active.some((s) => s.name.toLowerCase() === skill.name.toLowerCase()))
+      throw new Error(
+        "A skill with this name is already active. Edit its name before restoring it.",
+      );
+    const slot = !active.some((s) => s.slot === skill.slot)
+      ? skill.slot
+      : Array.from({ length: MAX_SKILLS }, (_, i) => i).find(
+          (i) => !active.some((s) => s.slot === i),
+        )!;
+    return {
+      state: {
+        ...state,
+        skills: state.skills.map((s) =>
+          s.id === skillId
+            ? {
+                ...s,
+                status: "active" as const,
+                slot,
+                color: COLORS[slot],
+                deactivatedAt: undefined,
+              }
+            : s,
+        ),
+      },
+      result: null,
+    };
+  });
+}
+export async function deleteSession(sessionId: string, allForSkill = false) {
+  return mutate((state) => {
+    const entry = state.sessions.find((s) => s.id === sessionId);
+    if (!entry) return { state, result: 0 };
+    const removed = state.sessions.filter((s) =>
+      allForSkill ? s.skillId === entry.skillId : s.id === sessionId,
+    );
+    const ids = new Set(removed.map((s) => s.id));
+    const credits = removed.map(
+      ({ id, skillId, durationSeconds, activityDate }) => ({
+        id,
+        skillId,
+        durationSeconds,
+        activityDate,
+      }),
+    );
+    return {
+      state: {
+        ...state,
+        sessions: state.sessions.filter((s) => !ids.has(s.id)),
+        retainedPractice: [...(state.retainedPractice ?? []), ...credits],
+      },
+      result: removed.length,
+    };
+  });
 }
