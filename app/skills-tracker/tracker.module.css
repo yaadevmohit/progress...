@@ -76,6 +76,7 @@
 }
 .dashboard {
   display: grid;
+  align-items: start;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: 20px;
 }

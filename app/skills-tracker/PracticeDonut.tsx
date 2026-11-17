@@ -10,7 +10,7 @@ export default function PracticeDonut({
 }: {
   skills: { id: string; name: string; slot: number; seconds: number }[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
 }) {
   const [hovered, setHovered] = useState<string | null>(null),
     tooltipId = useId();
@@ -18,6 +18,10 @@ export default function PracticeDonut({
     segments = practiceBreakdown(skills);
   const active = segments.find((skill) => skill.id === hovered),
     highlight = hovered ?? selectedId;
+  function activate(id: string) {
+    setHovered(null);
+    onSelect(selectedId === id ? null : id);
+  }
   return (
     <div className={styles.ring}>
       <svg
@@ -45,18 +49,18 @@ export default function PracticeDonut({
               fill={skill.color}
               role="button"
               tabIndex={0}
-              aria-label={`${skill.name}: ${durationLabel(skill.seconds)}, ${percentage}% of learning time. Show skill details`}
+              aria-label={`${skill.name}: ${durationLabel(skill.seconds)}, ${percentage}% of learning time. ${selectedId === skill.id ? "Show all skills" : "Show skill details"}`}
               aria-pressed={selectedId === skill.id}
               aria-describedby={hovered === skill.id ? tooltipId : undefined}
               onPointerEnter={() => setHovered(skill.id)}
               onPointerLeave={() => setHovered(null)}
               onFocus={() => setHovered(skill.id)}
               onBlur={() => setHovered(null)}
-              onClick={() => onSelect(skill.id)}
+              onClick={() => activate(skill.id)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  onSelect(skill.id);
+                  activate(skill.id);
                 }
                 if (event.key === "Escape") setHovered(null);
               }}

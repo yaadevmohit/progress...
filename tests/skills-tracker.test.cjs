@@ -525,6 +525,12 @@ test("donut renders individually focusable skill buttons with time, percentage a
   assert.ok(markup.includes("a: 25m, 25% of learning time"));
   assert.ok(markup.includes("b: 1h 15m, 75% of learning time"));
   assert.equal((markup.match(/aria-pressed="true"/g) || []).length, 1);
+  assert.ok(
+    markup.includes("b: 1h 15m, 75% of learning time. Show all skills"),
+  );
+  assert.ok(
+    markup.includes("a: 25m, 25% of learning time. Show skill details"),
+  );
 });
 
 test("focused skill detail renders its resource links and sessions without leaking other skills", () => {
