@@ -80,4 +80,4 @@ Latest session is selected across all skills by practice date, with the logging 
 
 Selecting a donut segment filters Activity and replaces the skill grid with that skill’s detail card. Hovering or focusing a segment shows its name, time and percentage of all learning time. Enter or space selects it. All skills, or selecting the active segment again, clears the selection. The overall streak, most practiced skill and donut totals remain global. Selection is temporary and does not write to local storage.
 
-The dashboard columns align at the top rather than stretching each other. This keeps the summary card’s height independent of the filtered detail panel.
+The dashboard columns align at the top rather than stretching each other. This keeps the summary card’s height independent of the filtered detail panel. Its normal view has a taller 560px baseline with extra space between the chart, latest session and overall streak. The active timer still uses the compact layout.
