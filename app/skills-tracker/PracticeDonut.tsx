@@ -49,7 +49,7 @@ export default function PracticeDonut({
               fill={skill.color}
               role="button"
               tabIndex={0}
-              aria-label={`${skill.name}: ${durationLabel(skill.seconds)}, ${percentage}% of learning time. ${selectedId === skill.id ? "Show all skills" : "Show skill details"}`}
+              aria-label={`${skill.name}${skill.status && skill.status !== "active" ? ` (${skill.status})` : ""}: ${durationLabel(skill.seconds)}, ${percentage}% of learning time. ${selectedId === skill.id ? "Show all skills" : "Show skill details"}`}
               aria-pressed={selectedId === skill.id}
               aria-describedby={hovered === skill.id ? tooltipId : undefined}
               onPointerEnter={() => setHovered(skill.id)}
@@ -82,7 +82,12 @@ export default function PracticeDonut({
       </div>
       {active && (
         <div id={tooltipId} role="tooltip" className={styles.donutTooltip}>
-          <strong>{active.name}</strong>
+          <strong>
+            {active.name}
+            {active.status && active.status !== "active"
+              ? ` (${active.status})`
+              : ""}
+          </strong>
           <span>
             {durationLabel(active.seconds)} ·{" "}
             {Math.round(active.percent * 10) / 10}% of total time

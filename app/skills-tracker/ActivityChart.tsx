@@ -6,7 +6,7 @@ import {
   activityTimeline,
   durationLabel,
   type ActivityView,
-  type LearningSession,
+  type PracticeEntry,
   type Skill,
 } from "./model";
 import styles from "./tracker.module.css";
@@ -30,7 +30,7 @@ export default function ActivityChart({
   skillName,
 }: {
   skills: Skill[];
-  sessions: LearningSession[];
+  sessions: PracticeEntry[];
   today: string;
   skillName?: string;
 }) {

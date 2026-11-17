@@ -2,6 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, Plus, X } from "lucide-react";
 import SkillComposer from "./SkillComposer";
+import SkillActions from "./SkillActions";
+import DeleteSessionButton from "./DeleteSessionButton";
+import PastSkills from "./PastSkills";
 import SkillDetail from "./SkillDetail";
 import ThemeToggle from "./ThemeToggle";
 import ActivityChart from "./ActivityChart";
@@ -11,6 +14,9 @@ import SkillResources from "./SkillResources";
 import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
+  activeSkills,
+  isActiveSkill,
+  practiceHistory,
   PRACTICE_COLORS,
   SKILL_TEXT_COLORS,
   visibleSkillSlots,
@@ -146,14 +152,17 @@ export default function SkillsTracker() {
     [completed, setCompleted] = useState<LearningSession | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const attemptedTimer = useRef<string | null>(null);
+  const history = practiceHistory(state);
+  const learningSkills = activeSkills(state.skills);
   const stats = skillStats(state, today),
     leader = mostPractised(state, today),
-    streak = currentStreak(state.sessions, today),
+    streak = currentStreak(history, today),
     total = stats.reduce((sum, s) => sum + s.seconds, 0),
     share = leader ? Math.round((leader.seconds / total) * 100) : 0;
   const focused = selectedId ? focusSkill(state, selectedId, today) : null;
   const selectedSkill = focused?.skill ?? null;
-  const activitySessions = focused?.sessions ?? state.sessions;
+  const activitySessions = focused?.activity ?? history;
+  const visibleSessions = focused?.sessions ?? state.sessions;
   const latestSession = mostRecentSession(state.sessions);
   const latestSkill = state.skills.find(
     (skill) => skill.id === latestSession?.skillId,
@@ -339,7 +348,12 @@ export default function SkillsTracker() {
                     The most practiced
                   </p>
                   <h2 className="mt-2 break-words text-2xl font-bold text-[var(--tracker-ink)]">
-                    {leader?.name || "Your next chapter"}
+                    {leader?.name || "Your next chapter"}{" "}
+                    {leader && !isActiveSkill(leader) && (
+                      <span className={styles.statusBadge}>
+                        {leader.status}
+                      </span>
+                    )}
                   </h2>
                 </div>
                 <p
@@ -357,7 +371,12 @@ export default function SkillsTracker() {
                     {latestSession ? (
                       <>
                         <p className="mt-1 break-words text-sm font-bold">
-                          {latestSkill?.name}{" "}
+                          {latestSkill?.name}
+                          {latestSkill && !isActiveSkill(latestSkill) && (
+                            <span className={styles.statusBadge}>
+                              {latestSkill.status}
+                            </span>
+                          )}{" "}
                           <span className="text-[var(--tracker-muted)]">·</span>{" "}
                           {durationLabel(latestSession.durationSeconds)}
                         </p>
@@ -454,7 +473,8 @@ export default function SkillsTracker() {
               {selectedSkill ? (
                 <SkillDetail
                   skill={selectedSkill}
-                  sessions={activitySessions}
+                  sessions={visibleSessions}
+                  onRemoved={() => setSelectedId(null)}
                   onBack={() => setSelectedId(null)}
                   onLog={() => setSession(selectedSkill.id)}
                 />
@@ -462,12 +482,14 @@ export default function SkillsTracker() {
                 <>
                   <div className="flex items-center justify-end">
                     <span className="text-xs font-semibold text-[var(--tracker-muted)]">
-                      {state.skills.length} / {MAX_SKILLS}
+                      {learningSkills.length} / {MAX_SKILLS}
                     </span>
                   </div>
                   <div className={styles.skills}>
                     {visibleSkillSlots(state.skills).map((slot) => {
-                      const skill = stats.find((s) => s.slot === slot);
+                      const skill = stats.find(
+                        (s) => s.slot === slot && isActiveSkill(s),
+                      );
                       return (
                         <div
                           key={slot}
@@ -488,12 +510,18 @@ export default function SkillsTracker() {
                         >
                           {skill ? (
                             <>
+                              <SkillActions skill={skill} />
                               <h3
-                                className="truncate text-base font-bold"
+                                className="truncate pr-12 text-base font-bold"
                                 title={skill.name}
                               >
                                 {skill.name}
                               </h3>
+                              {skill.description && (
+                                <p className="mt-1 line-clamp-2 text-xs">
+                                  {skill.description}
+                                </p>
+                              )}
                               <div className="my-1 text-3xl font-bold tracking-tight">
                                 {durationLabel(skill.seconds)}
                               </div>
@@ -568,6 +596,12 @@ export default function SkillsTracker() {
           </div>
         </div>
         {!selectedSkill && (
+          <PastSkills
+            skills={stats.filter((skill) => !isActiveSkill(skill))}
+            onView={setSelectedId}
+          />
+        )}
+        {!selectedSkill && (
           <section className="pb-10 pt-6" aria-labelledby="sessions-title">
             <div className="mb-4 flex items-center justify-between">
               <h2 id="sessions-title" className="text-lg font-bold">
@@ -603,6 +637,20 @@ export default function SkillsTracker() {
                             state.skills.find((s) => s.id === item.skillId)
                               ?.name
                           }
+                          {state.skills.find(
+                            (skill) => skill.id === item.skillId,
+                          )?.status &&
+                            state.skills.find(
+                              (skill) => skill.id === item.skillId,
+                            )?.status !== "active" && (
+                              <span className={styles.statusBadge}>
+                                {
+                                  state.skills.find(
+                                    (skill) => skill.id === item.skillId,
+                                  )?.status
+                                }
+                              </span>
+                            )}
                         </h3>
                         {item.notes && (
                           <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--tracker-muted)]">
@@ -617,9 +665,25 @@ export default function SkillsTracker() {
                             : "Logged time"}
                         </p>
                       </div>
-                      <span className="shrink-0 text-sm font-bold">
-                        {durationLabel(item.durationSeconds)}
-                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="text-sm font-bold">
+                          {durationLabel(item.durationSeconds)}
+                        </span>
+                        <DeleteSessionButton
+                          session={item}
+                          skillName={
+                            state.skills.find(
+                              (skill) => skill.id === item.skillId,
+                            )?.name ?? "Skill"
+                          }
+                          count={
+                            state.sessions.filter(
+                              (session) => session.skillId === item.skillId,
+                            ).length
+                          }
+                          onDeleted={() => setCompleted(null)}
+                        />
+                      </div>
                     </li>
                   ))}
               </ul>

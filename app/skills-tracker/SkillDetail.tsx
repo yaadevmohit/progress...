@@ -8,17 +8,22 @@ import {
   type Skill,
 } from "./model";
 import SkillResources from "./SkillResources";
+import SkillActions from "./SkillActions";
+import DeleteSessionButton from "./DeleteSessionButton";
+import { isActiveSkill } from "./model";
 import styles from "./tracker.module.css";
 export default function SkillDetail({
   skill,
   sessions,
   onBack,
   onLog,
+  onRemoved,
 }: {
   skill: Skill & { seconds: number };
   sessions: LearningSession[];
   onBack: () => void;
   onLog: () => void;
+  onRemoved?: () => void;
 }) {
   const section = useRef<HTMLElement>(null),
     heading = useRef<HTMLHeadingElement>(null);
@@ -56,14 +61,19 @@ export default function SkillDetail({
           <ArrowLeft size={14} />
           All skills
         </button>
-        <button
-          type="button"
-          onClick={onLog}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold hover:bg-[var(--tracker-hover)]"
-        >
-          <Plus size={14} />
-          Log session
-        </button>
+        <div className="flex items-center gap-3">
+          <SkillActions skill={skill} inline onRemoved={onRemoved} />
+          {isActiveSkill(skill) && (
+            <button
+              type="button"
+              onClick={onLog}
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold hover:bg-[var(--tracker-hover)]"
+            >
+              <Plus size={14} />
+              Log session
+            </button>
+          )}
+        </div>
       </div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <h2
@@ -72,7 +82,10 @@ export default function SkillDetail({
           id="skill-detail-title"
           className="min-w-0 break-words text-2xl font-extrabold"
         >
-          {skill.name}
+          {skill.name}{" "}
+          {!isActiveSkill(skill) && (
+            <span className={styles.statusBadge}>{skill.status}</span>
+          )}
         </h2>
         <div>
           <strong className="text-3xl font-bold tracking-tight">
@@ -83,11 +96,18 @@ export default function SkillDetail({
           </span>
         </div>
       </div>
+      {skill.description && (
+        <p className="mb-5 whitespace-pre-wrap break-words text-sm text-[var(--tracker-muted)]">
+          {skill.description}
+        </p>
+      )}
       <div className={styles.detailColumns}>
         <div>
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="text-sm font-extrabold">Resources</h3>
-            <SkillResources skill={skill} label="Manage resources" />
+            {skill.status !== "deleted" && (
+              <SkillResources skill={skill} label="Manage resources" />
+            )}
           </div>
           {skill.resources?.length ? (
             <ul className="space-y-2">
@@ -137,9 +157,14 @@ export default function SkillDetail({
                         timeZone: "UTC",
                       })}
                     </time>
-                    <strong className="shrink-0">
-                      {durationLabel(session.durationSeconds)}
-                    </strong>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <strong>{durationLabel(session.durationSeconds)}</strong>
+                      <DeleteSessionButton
+                        session={session}
+                        skillName={skill.name}
+                        count={sessions.length}
+                      />
+                    </div>
                   </div>
                   {session.notes && (
                     <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--tracker-muted)]">

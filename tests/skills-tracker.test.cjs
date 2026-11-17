@@ -541,9 +541,24 @@ test("focused skill detail renders its resource links and sessions without leaki
     "./storage": {},
     ...css,
   }).default;
+  const Modal = load("app/skills-tracker/TrackerModal.tsx", css).default;
+  const Actions = load("app/skills-tracker/SkillActions.tsx", {
+    "./storage": {},
+    "./model": model,
+    "./TrackerModal": { default: Modal },
+    ...css,
+  }).default;
+  const DeleteButton = load("app/skills-tracker/DeleteSessionButton.tsx", {
+    "./storage": {},
+    "./model": model,
+    "./TrackerModal": { default: Modal },
+    ...css,
+  }).default;
   const Detail = load("app/skills-tracker/SkillDetail.tsx", {
     "./model": model,
     "./SkillResources": { default: Resources },
+    "./SkillActions": { default: Actions },
+    "./DeleteSessionButton": { default: DeleteButton },
     ...css,
   }).default;
   const chosen = {
@@ -573,4 +588,158 @@ test("focused skill detail renders its resource links and sessions without leaki
   assert.ok(markup.includes("Selected practice notes"));
   assert.ok(!markup.includes("Other skill notes"));
   assert.ok(markup.includes("All skills"));
+});
+
+test("older saves receive empty descriptions and active status without losing sessions or resources", () => {
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [
+      {
+        ...skill("old", 0),
+        resources: [{ id: "r", name: "Guide", url: "https://example.com" }],
+      },
+    ],
+    sessions: [session("2026-11-14", "old")],
+  };
+  const raw = JSON.stringify(state),
+    decoded = model.decodeTracker(raw);
+  assert.equal(decoded.error, null);
+  assert.equal(decoded.state.skills[0].description, "");
+  assert.equal(decoded.state.skills[0].status, "active");
+  assert.equal(decoded.state.sessions[0].id, state.sessions[0].id);
+  assert.equal(decoded.state.skills[0].resources[0].name, "Guide");
+  assert.equal(JSON.stringify(state), raw);
+});
+
+test("skill editing saves description and resource edits atomically, preserving earned time", async () => {
+  const b = browserStore(),
+    s = await b.store.addSkill("Spanish", 0, "Conversation");
+  await b.store.logSession(s.id, 25, "2026-11-14", "Practice");
+  await b.store.updateSkill(
+    s.id,
+    "Spanish conversation",
+    "Daily conversations",
+    [{ id: "r", name: "Course", url: "https://example.com/course" }],
+  );
+  const saved = b.read();
+  assert.equal(saved.skills[0].description, "Daily conversations");
+  assert.equal(saved.skills[0].name, "Spanish conversation");
+  assert.equal(saved.skills[0].resources[0].name, "Course");
+  assert.equal(model.skillStats(saved, "2026-11-14")[0].seconds, 1500);
+  await assert.rejects(
+    b.store.updateSkill(s.id, "Bad", "", [
+      { id: "bad", name: "Unsafe", url: "javascript:alert(1)" },
+    ]),
+    /valid http/,
+  );
+  assert.equal(b.read().skills[0].name, "Spanish conversation");
+});
+
+test("archiving and deleting cards frees slots but preserves historical sessions and totals", async () => {
+  const b = browserStore(),
+    s = await b.store.addSkill("Spanish", 0);
+  await b.store.logSession(s.id, 25, "2026-11-14", "Practice");
+  await b.store.deactivateSkill(s.id, "archived");
+  assert.equal(model.activeSkills(b.read().skills).length, 0);
+  assert.equal(b.read().sessions.length, 1);
+  const next = await b.store.addSkill("Guitar");
+  assert.equal(next.slot, 0);
+  assert.equal(model.decodeTracker(JSON.stringify(b.read())).error, null);
+  await b.store.restoreSkill(s.id);
+  assert.equal(model.activeSkills(b.read().skills).length, 2);
+  assert.equal(
+    new Set(model.activeSkills(b.read().skills).map((s) => s.slot)).size,
+    2,
+  );
+  await b.store.deactivateSkill(s.id, "deleted");
+  assert.equal(
+    b.read().skills.find((item) => item.id === s.id).status,
+    "deleted",
+  );
+  assert.equal(model.mostPractised(b.read(), "2026-11-14").id, s.id);
+  assert.equal(
+    model.practiceBreakdown(model.skillStats(b.read(), "2026-11-14"))[0]
+      .seconds,
+    1500,
+  );
+  await assert.rejects(
+    b.store.logSession(s.id, 25, "2026-11-14", ""),
+    /Choose a skill/,
+  );
+  await assert.rejects(b.store.restoreSkill(s.id), /Only archived/);
+  await assert.rejects(
+    b.store.deactivateSkill(s.id, "archived"),
+    /already been deleted/,
+  );
+});
+
+test("archive and delete cannot discard an active timer and restoring respects six active skills", async () => {
+  const b = browserStore(),
+    s = await b.store.addSkill("Spanish");
+  const timer = await b.store.startTimer(s.id, 25, "");
+  await assert.rejects(
+    b.store.deactivateSkill(s.id, "archived"),
+    /Finish or cancel/,
+  );
+  assert.equal(b.read().activeTimer.id, timer.id);
+  await b.store.cancelTimer(timer.id);
+  await b.store.deactivateSkill(s.id, "archived");
+  for (let i = 0; i < 6; i++) await b.store.addSkill("Skill " + i);
+  await assert.rejects(b.store.restoreSkill(s.id), /six active/);
+  assert.equal(model.activeSkills(b.read().skills).length, 6);
+  assert.equal(model.visibleSkillSlots(b.read().skills).length, 6);
+});
+
+test("deleting one or all session entries preserves time, streak and activity across reloads", async () => {
+  const b = browserStore(),
+    a = await b.store.addSkill("Spanish"),
+    other = await b.store.addSkill("Guitar");
+  await b.store.logSession(a.id, 25, "2026-11-13", "Private detailed notes");
+  await b.store.logSession(a.id, 45, "2026-11-14", "More notes");
+  await b.store.logSession(other.id, 60, "2026-11-14", "Guitar");
+  const first = b.read().sessions.find((s) => s.skillId === a.id);
+  await b.store.deleteSession(first.id);
+  assert.equal(b.read().sessions.length, 2);
+  assert.equal(b.read().retainedPractice.length, 1);
+  assert.ok(!("notes" in b.read().retainedPractice[0]));
+  await b.store.deleteSession(first.id);
+  assert.equal(b.read().retainedPractice.length, 1);
+  const remaining = b.read().sessions.find((s) => s.skillId === a.id);
+  await b.store.deleteSession(remaining.id, true);
+  const decoded = model.decodeTracker(JSON.stringify(b.read()));
+  assert.equal(decoded.error, null);
+  const state = decoded.state;
+  assert.equal(state.sessions.length, 1);
+  assert.equal(state.sessions[0].skillId, other.id);
+  assert.equal(
+    model.skillStats(state, "2026-11-14").find((s) => s.id === a.id).seconds,
+    4200,
+  );
+  assert.equal(
+    model.currentStreak(model.practiceHistory(state), "2026-11-14"),
+    2,
+  );
+  assert.equal(model.focusSkill(state, a.id, "2026-11-14").sessions.length, 0);
+  assert.equal(model.focusSkill(state, a.id, "2026-11-14").activity.length, 2);
+  assert.equal(
+    model
+      .weeklyActivity(model.practiceHistory(state), "2026-11-14")
+      .weeks.reduce((sum, w) => sum + w.seconds, 0),
+    7800,
+  );
+});
+
+test("delete all sessions only removes the chosen skill's entries and rejects duplicated time credits", async () => {
+  const b = browserStore(),
+    a = await b.store.addSkill("A"),
+    other = await b.store.addSkill("B");
+  await b.store.logSession(a.id, 25, "2026-11-14", "A1");
+  await b.store.logSession(a.id, 25, "2026-11-14", "A2");
+  await b.store.logSession(other.id, 25, "2026-11-14", "B");
+  const id = b.read().sessions.find((s) => s.skillId === a.id).id;
+  assert.equal(await b.store.deleteSession(id, true), 2);
+  assert.equal(b.read().sessions.length, 1);
+  const invalid = b.read();
+  invalid.retainedPractice.push(invalid.retainedPractice[0]);
+  assert.ok(model.decodeTracker(JSON.stringify(invalid)).error);
 });
