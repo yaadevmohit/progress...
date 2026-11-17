@@ -635,8 +635,8 @@
   padding-top: 12px;
 }
 .streakStats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  justify-content: center;
   gap: 12px;
   margin-top: 14px;
   padding-top: 14px;
@@ -644,6 +644,8 @@
 }
 .streakStat {
   display: flex;
+  justify-content: center;
+  text-align: center;
   align-items: center;
   gap: 9px;
 }

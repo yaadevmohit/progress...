@@ -17,6 +17,7 @@ import {
   localDay,
   MAX_SKILLS,
   mostPractised,
+  mostRecentSession,
   REMINDER_INTERVAL,
   skillStats,
   type ActiveTimer,
@@ -147,27 +148,41 @@ export default function SkillsTracker() {
     streak = currentStreak(state.sessions, today),
     total = stats.reduce((sum, s) => sum + s.seconds, 0),
     share = leader ? Math.round((leader.seconds / total) * 100) : 0;
+  const latestSession = mostRecentSession(state.sessions);
+  const latestSkill = state.skills.find(
+    (skill) => skill.id === latestSession?.skillId,
+  );
   const timer = state.activeTimer;
-  const completeTimer = useCallback(async (id: string, early = false) => {
-    const saved = await finishTimer(id, early);
-    if (saved) {
-      setCompleted(saved);
-      setNotice("");
-      setError("");
-      playSessionAlert("finish");
-    }
-  }, [setCompleted, setNotice, setError]);
+  const completeTimer = useCallback(
+    async (id: string, early = false) => {
+      const saved = await finishTimer(id, early);
+      if (saved) {
+        setCompleted(saved);
+        setNotice("");
+        setError("");
+        playSessionAlert("finish");
+      }
+    },
+    [setCompleted, setNotice, setError],
+  );
   useEffect(() => {
     const originalTitle = document.title;
-    return () => { document.title = originalTitle; };
+    return () => {
+      document.title = originalTitle;
+    };
   }, []);
   useEffect(() => {
     if (timer && now !== null) {
-      const seconds = Math.min(timer.minutes * 60, Math.max(0, Math.ceil((timer.endsAt - now) / 1000)));
+      const seconds = Math.min(
+        timer.minutes * 60,
+        Math.max(0, Math.ceil((timer.endsAt - now) / 1000)),
+      );
       const countdown = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
       document.title = `${countdown} · Skills Tracker`;
     } else {
-      document.title = completed ? "Session complete · Skills Tracker" : "Skills Tracker";
+      document.title = completed
+        ? "Session complete · Skills Tracker"
+        : "Skills Tracker";
     }
   }, [timer, now, completed]);
   useEffect(() => {
@@ -277,7 +292,11 @@ export default function SkillsTracker() {
             {notice && (
               <div className={styles.sessionNotice}>
                 <p>{notice}</p>
-                <button className={styles.icon} onClick={() => setNotice("")} aria-label="Dismiss session alert">
+                <button
+                  className={styles.icon}
+                  onClick={() => setNotice("")}
+                  aria-label="Dismiss session alert"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -323,19 +342,22 @@ export default function SkillsTracker() {
                     <p className="text-xs font-bold text-[var(--tracker-muted)]">
                       Latest session
                     </p>
-                    {leader?.lastSession ? (
+                    {latestSession ? (
                       <>
-                        <p className="mt-1 text-sm font-bold">
-                          {dateLabel(leader.lastSession.activityDate)},{" "}
-                          {leader.lastSession.activityDate.slice(0, 4)}{" "}
+                        <p className="mt-1 break-words text-sm font-bold">
+                          {latestSkill?.name}{" "}
                           <span className="text-[var(--tracker-muted)]">·</span>{" "}
-                          {durationLabel(leader.lastSession.durationSeconds)}
+                          {durationLabel(latestSession.durationSeconds)}
                         </p>
-                        {leader.lastSession.notes && (
+                        <p className="mt-1 text-xs text-[var(--tracker-muted)]">
+                          {dateLabel(latestSession.activityDate)},{" "}
+                          {latestSession.activityDate.slice(0, 4)}
+                        </p>
+                        {latestSession.notes && (
                           <p
                             className={`${styles.sessionNotes} mt-1 line-clamp-2 break-words text-xs text-[var(--tracker-muted)]`}
                           >
-                            {leader.lastSession.notes}
+                            {latestSession.notes}
                           </p>
                         )}
                       </>
@@ -354,6 +376,7 @@ export default function SkillsTracker() {
                       <StreakFlame
                         count={streak}
                         ready={ready && now !== null}
+                        celebrateDay={today}
                         size={20}
                       />
                       <div>
@@ -361,21 +384,6 @@ export default function SkillsTracker() {
                           {streak} {streak === 1 ? "day" : "days"}
                         </strong>
                         <span>Overall streak</span>
-                      </div>
-                    </div>
-                    <div className={styles.streakStat}>
-                      <StreakFlame
-                        key={leader?.id ?? "empty"}
-                        count={leader?.streak ?? 0}
-                        ready={ready && now !== null}
-                        size={20}
-                      />
-                      <div>
-                        <strong>
-                          {leader?.streak ?? 0}{" "}
-                          {(leader?.streak ?? 0) === 1 ? "day" : "days"}
-                        </strong>
-                        <span>Skill streak</span>
                       </div>
                     </div>
                   </div>
@@ -394,16 +402,39 @@ export default function SkillsTracker() {
                 />
               )}
               {!timer && completed && (
-                <section className={`${styles.panel} ${styles.completion}`} role="status" aria-live="polite" aria-atomic="true" aria-labelledby="completion-title">
-                  <button className={`${styles.icon} ${styles.completionClose}`} onClick={() => setCompleted(null)} aria-label="Dismiss session completion">
+                <section
+                  className={`${styles.panel} ${styles.completion}`}
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  aria-labelledby="completion-title"
+                >
+                  <button
+                    className={`${styles.icon} ${styles.completionClose}`}
+                    onClick={() => setCompleted(null)}
+                    aria-label="Dismiss session completion"
+                  >
                     <X size={18} />
                   </button>
-                  <CheckCircle2 size={32} aria-hidden="true" className="mb-3 text-[var(--tracker-action)]" />
-                  <h2 id="completion-title" className="text-xl font-bold">Thank you for showing up!</h2>
+                  <CheckCircle2
+                    size={32}
+                    aria-hidden="true"
+                    className="mb-3 text-[var(--tracker-action)]"
+                  />
+                  <h2 id="completion-title" className="text-xl font-bold">
+                    Thank you for showing up!
+                  </h2>
                   <p className="mt-3 text-sm font-semibold">
-                    Your {durationLabel(completed.durationSeconds)} session for {state.skills.find((skill) => skill.id === completed.skillId)?.name || "your skill"} is finished and saved.
+                    Your {durationLabel(completed.durationSeconds)} session for{" "}
+                    {state.skills.find(
+                      (skill) => skill.id === completed.skillId,
+                    )?.name || "your skill"}{" "}
+                    is finished and saved.
                   </p>
-                  <p className="mt-2 text-sm text-[var(--tracker-muted)]">Every session moves you forward. Keep going, one small step at a time.</p>
+                  <p className="mt-2 text-sm text-[var(--tracker-muted)]">
+                    Every session moves you forward. Keep going, one small step
+                    at a time.
+                  </p>
                 </section>
               )}
             </div>
@@ -572,7 +603,9 @@ export default function SkillsTracker() {
         <SessionDialog
           onStarted={(name, minutes) => {
             setCompleted(null);
-            setNotice(`${name} timer started. You have ${minutes} ${minutes === 1 ? "minute" : "minutes"} to focus. You’ve got this!`);
+            setNotice(
+              `${name} timer started. You have ${minutes} ${minutes === 1 ? "minute" : "minutes"} to focus. You’ve got this!`,
+            );
             playSessionAlert("start");
           }}
           state={state}

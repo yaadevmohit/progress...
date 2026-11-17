@@ -63,12 +63,16 @@ The server will derive `user_id` from a verified session, never trust one sent b
 
 Learning resources are optional and saved with each skill in local storage. Older saves without a `resources` field remain valid. The resource section supports multiple links, opens them in a new tab, and lets you remove saved links. Only HTTP/HTTPS URLs without embedded credentials are accepted. Resources do not affect learning totals or streaks.
 
-The skill grid displays existing cards in saved order followed by exactly one Add a skill card, until all six slots are used. The donut only allocates segments to skills with recorded learning time; its centre shows total learning time and the leading skill remains named below. Flame icons are orange for active streaks, flare when a count increases during use, and do not celebrate initial hydration of saved data.
+The skill grid displays existing cards in saved order followed by exactly one Add a skill card, until all six slots are used. The donut only allocates segments to skills with recorded learning time; its centre shows total learning time and the leading skill remains named below. Flame icons are orange for active streaks, flare when a count increases during use, and celebrate the overall streak once on the first active visit of each local day.
 
 The tracker palette lives in CSS variables in `tracker.module.css`: yellow surfaces, red/brown text and warm chart colours. The header Log session button retains its green styling. The shared duration dial accepts scoped CSS colour variables, with green defaults for the original dashboard.
 
 Dark mode uses `#0B1D51` as its background, lighter navy surfaces, pale text and gold accents. The preference is saved separately under `progress.skills-tracker.theme`; the root layout restores it before hydration to avoid a bright light-theme flash. Dark styling is scoped to the tracker, and dialogs, charts and native date fields follow the same theme. The navbar toggle works with keyboard input and respects reduced-motion preferences. Recent sessions follow the content directly, without a viewport-height spacer.
 
-The most practiced card includes that skill’s latest session (date, duration and optional notes), its individual streak and the overall streak across all skills. The greeting only contains the greeting. Each skill card keeps its own streak. On mobile, the theme control displays a single current-theme icon with a rotation and fade; the sliding sun/moon switch remains on desktop.
+The most practiced card includes the latest session across all skills (skill name, date, duration and optional notes) and the overall streak across all skills. The greeting only contains the greeting. Each skill card keeps its own streak. On mobile, the theme control displays a single current-theme icon with a rotation and fade; the sliding sun/moon switch remains on desktop.
 
 Skill backgrounds and donut segments use the same six colours in both themes: `#640D5F`, `#B12C00`, `#EB5B00`, `#090040`, `#471396` and `#B13BFF`. Each card uses a contrasting foreground; the resource dialog keeps the app theme rather than inheriting the card text colour. Colour is assigned by card slot, including skills saved before this palette was added.
+
+The most practiced card centres the overall streak. Its first daily celebration uses a separate local day marker, leaving session data untouched. Individual skill streaks remain on the skill cards. Reduced motion suppresses the celebration.
+
+Latest session is selected across all skills by practice date, with the logging timestamp breaking ties on the same date. The most practiced skill is still selected independently by total learning time.

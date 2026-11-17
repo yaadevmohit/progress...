@@ -400,3 +400,57 @@ test("activity navigation cannot pass local history or move into future periods"
   assert.equal(empty.minOffset, 0);
   assert.equal(empty.start, "2026-11-01");
 });
+
+test("daily streak celebration happens once across reloads and becomes available on a new day", () => {
+  const values = new Map();
+  const localStorage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+  const first = load(
+    "app/skills-tracker/daily-streak.ts",
+    {},
+    { localStorage },
+  );
+  assert.equal(first.claimDailyStreak("2026-11-17"), true);
+  assert.equal(first.claimDailyStreak("2026-11-17"), false);
+  const reloaded = load(
+    "app/skills-tracker/daily-streak.ts",
+    {},
+    { localStorage },
+  );
+  assert.equal(reloaded.claimDailyStreak("2026-11-17"), false);
+  assert.equal(reloaded.claimDailyStreak("2026-11-18"), true);
+});
+
+test("daily streak celebration still avoids repeats when storage is blocked", () => {
+  const localStorage = {
+    getItem: () => {
+      throw new Error("blocked");
+    },
+  };
+  const daily = load(
+    "app/skills-tracker/daily-streak.ts",
+    {},
+    { localStorage },
+  );
+  assert.equal(daily.claimDailyStreak("2026-11-17"), true);
+  assert.equal(daily.claimDailyStreak("2026-11-17"), false);
+});
+
+test("latest session comes from any skill and does not change the most practiced skill", () => {
+  const a = session("2026-11-16", "a", 3600);
+  const b = session("2026-11-17", "b", 600);
+  const sessions = [a, b];
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [skill("a", 0), skill("b", 1)],
+    sessions,
+  };
+  assert.equal(model.mostPractised(state, "2026-11-17").id, "a");
+  assert.equal(model.mostRecentSession(sessions).skillId, "b");
+  assert.equal(sessions[0].id, a.id);
+  const newer = { ...b, id: "newer", createdAt: "2026-11-17T15:00:00Z" };
+  assert.equal(model.mostRecentSession([b, newer]).id, "newer");
+  assert.equal(model.mostRecentSession([]), null);
+});
