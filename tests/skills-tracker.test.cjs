@@ -10,6 +10,7 @@ function load(file, dependencies = {}, globals = {}) {
   const source = ts.transpileModule(fs.readFileSync(file, "utf8"), {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
+      jsx: ts.JsxEmit.ReactJSX,
       target: ts.ScriptTarget.ES2022,
     },
   }).outputText;
@@ -453,4 +454,117 @@ test("latest session comes from any skill and does not change the most practiced
   const newer = { ...b, id: "newer", createdAt: "2026-11-17T15:00:00Z" };
   assert.equal(model.mostRecentSession([b, newer]).id, "newer");
   assert.equal(model.mostRecentSession([]), null);
+});
+
+test("focusing a skill isolates its activity and leaves all progress unchanged", () => {
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [skill("a", 0), skill("b", 1)],
+    sessions: [
+      session("2026-11-17", "a", 3600),
+      session("2026-11-17", "b", 600),
+      session("2026-11-16", "b", 1200),
+    ],
+  };
+  const before = JSON.stringify(state);
+  const focus = model.focusSkill(state, "b", "2026-11-17");
+  assert.equal(focus.skill.name, "b");
+  assert.equal(focus.skill.seconds, 1800);
+  assert.equal(focus.skill.streak, 2);
+  assert.equal(focus.sessions.length, 2);
+  assert.ok(focus.sessions.every((s) => s.skillId === "b"));
+  const activity = model.activityTimeline(
+    [focus.skill],
+    focus.sessions,
+    "2026-11-17",
+    "weeks",
+  );
+  assert.equal(
+    activity.buckets.reduce((sum, bucket) => sum + bucket.seconds, 0),
+    1800,
+  );
+  assert.equal(model.mostPractised(state, "2026-11-17").id, "a");
+  assert.equal(model.focusSkill(state, "missing", "2026-11-17"), null);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test("donut targets support one full ring, small arcs and large arcs without invalid coordinates", () => {
+  const { donutPath } = load("app/skills-tracker/donut-path.ts");
+  assert.equal(donutPath(0, 0), "");
+  const full = donutPath(0, 100);
+  assert.equal((full.match(/A 49 49/g) || []).length, 2);
+  assert.equal((full.match(/A 37 37/g) || []).length, 2);
+  assert.ok(donutPath(0, 75).includes("A 49 49 0 1 1"));
+  assert.ok(donutPath(75, 25).includes("A 49 49 0 0 1"));
+  for (const path of [full, donutPath(33.3, 0.1), donutPath(75, 25)])
+    assert.ok(!/NaN|Infinity/.test(path));
+});
+
+test("donut renders individually focusable skill buttons with time, percentage and selection state", () => {
+  const React = require("react"),
+    { renderToStaticMarkup } = require("react-dom/server");
+  const paths = load("app/skills-tracker/donut-path.ts");
+  const Donut = load("app/skills-tracker/PracticeDonut.tsx", {
+    "./model": model,
+    "./donut-path": paths,
+    "./tracker.module.css": { default: {} },
+  }).default;
+  const markup = renderToStaticMarkup(
+    React.createElement(Donut, {
+      skills: [
+        { ...skill("a", 0), seconds: 1500 },
+        { ...skill("b", 1), seconds: 4500 },
+        { ...skill("c", 2), seconds: 0 },
+      ],
+      selectedId: "b",
+      onSelect: () => {},
+    }),
+  );
+  assert.equal((markup.match(/role="button"/g) || []).length, 2);
+  assert.equal((markup.match(/tabindex="0"/g) || []).length, 2);
+  assert.ok(markup.includes("a: 25m, 25% of learning time"));
+  assert.ok(markup.includes("b: 1h 15m, 75% of learning time"));
+  assert.equal((markup.match(/aria-pressed="true"/g) || []).length, 1);
+});
+
+test("focused skill detail renders its resource links and sessions without leaking other skills", () => {
+  const React = require("react"),
+    { renderToStaticMarkup } = require("react-dom/server");
+  const css = { "./tracker.module.css": { default: {} } };
+  const Resources = load("app/skills-tracker/SkillResources.tsx", {
+    "./storage": {},
+    ...css,
+  }).default;
+  const Detail = load("app/skills-tracker/SkillDetail.tsx", {
+    "./model": model,
+    "./SkillResources": { default: Resources },
+    ...css,
+  }).default;
+  const chosen = {
+    ...skill("b", 1),
+    resources: [
+      { id: "guide", name: "Selected guide", url: "https://example.com/guide" },
+    ],
+  };
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [skill("a", 0), chosen],
+    sessions: [
+      { ...session("2026-11-17", "a", 3600), notes: "Other skill notes" },
+      { ...session("2026-11-17", "b", 600), notes: "Selected practice notes" },
+    ],
+  };
+  const focused = model.focusSkill(state, "b", "2026-11-17");
+  const markup = renderToStaticMarkup(
+    React.createElement(Detail, {
+      ...focused,
+      onBack: () => {},
+      onLog: () => {},
+    }),
+  );
+  assert.ok(markup.includes("Selected guide"));
+  assert.ok(markup.includes('href="https://example.com/guide"'));
+  assert.ok(markup.includes("Selected practice notes"));
+  assert.ok(!markup.includes("Other skill notes"));
+  assert.ok(markup.includes("All skills"));
 });

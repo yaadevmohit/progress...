@@ -43,7 +43,8 @@ Dates are calendar dates, while timestamps are instants. Logging uses the browse
 | --- | --- |
 | `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, greeting streak and timer |
 | `app/skills-tracker/ActivityChart.tsx` | Adaptive weekly, monthly and annual activity scales with drill-down and bounded navigation |
-| `app/skills-tracker/PracticeDonut.tsx` | Time distribution across skills, with colours matched to card dots |
+| `app/skills-tracker/PracticeDonut.tsx` | Interactive time distribution with hover details and keyboard selection |
+| `app/skills-tracker/SkillDetail.tsx` | Selected skill, resources, time spent and recent sessions |
 | `app/skills-tracker/ThemeToggle.tsx` | Animated light/dark switch, with a separate local preference and cross-tab updates |
 | `app/skills-tracker/StreakFlame.tsx` | Active streak glow and increase animation, respecting reduced motion |
 | `app/skills-tracker/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |
@@ -76,3 +77,5 @@ Skill backgrounds and donut segments use the same six colours in both themes: `#
 The most practiced card centres the overall streak. Its first daily celebration uses a separate local day marker, leaving session data untouched. Individual skill streaks remain on the skill cards. Reduced motion suppresses the celebration.
 
 Latest session is selected across all skills by practice date, with the logging timestamp breaking ties on the same date. The most practiced skill is still selected independently by total learning time.
+
+Selecting a donut segment filters Activity and replaces the skill grid with that skill’s detail card. Hovering or focusing a segment shows its name, time and percentage of all learning time. Enter or space selects it. All skills clears the selection. The overall streak, most practiced skill and donut totals remain global. Selection is temporary and does not write to local storage.

@@ -133,11 +133,6 @@
   justify-content: center;
   pointer-events: none;
 }
-.donutSegment {
-  transition:
-    stroke-dasharray 0.6s ease,
-    stroke-dashoffset 0.6s ease;
-}
 .flame {
   display: inline-flex;
   flex-shrink: 0;
@@ -170,25 +165,25 @@
   min-height: 245px;
   padding: 20px;
 }
-.compact > p:first-child {
-  grid-column: 1/-1;
-}
+
 .compact .ring {
   width: 100px;
   height: 100px;
   margin: 0;
-  grid-row: 2;
+  grid-row: 1;
   grid-column: 1;
 }
-.compact .ring span:first-child {
+.compact .donutCenter span:first-child {
   font-size: 23px;
 }
-.compact .ring span:last-child {
+.compact .donutCenter span:last-child {
   display: none;
 }
-.compact h2 {
+.compact .leaderHeading {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
+}
+.compact h2 {
   font-size: 20px;
 }
 .compact .leaderIntro,
@@ -794,4 +789,105 @@
     justify-content: space-between;
     margin-left: 0;
   }
+}
+
+.leader .ring {
+  margin-top: 0;
+}
+.donutSegment {
+  cursor: pointer;
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
+}
+.donutSegment:hover {
+  filter: brightness(1.12);
+}
+.donutSegment:focus-visible {
+  outline: none;
+  stroke: var(--tracker-ink);
+  stroke-width: 1.25;
+}
+.donutTooltip {
+  position: absolute;
+  z-index: 25;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 220px;
+  pointer-events: none;
+  border: 1px solid var(--tracker-line);
+  border-radius: 12px;
+  background: var(--tracker-field);
+  color: var(--tracker-ink);
+  box-shadow: 0 8px 24px #0002;
+  padding: 10px 12px;
+  animation: donutTooltipIn 0.15s ease;
+}
+.donutTooltip strong {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.donutTooltip span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.skillDetail {
+  border-top-width: 3px;
+  animation: arrive 0.3s ease;
+}
+.detailColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tracker-line) transparent;
+}
+.resourceLink {
+  display: block;
+  border: 1px solid var(--tracker-line);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  transition: background 0.2s;
+}
+.resourceLink:hover {
+  background: var(--tracker-soft);
+}
+@media (max-width: 760px) {
+  .detailColumns {
+    grid-template-columns: 1fr;
+    max-height: 360px;
+    gap: 20px;
+  }
+}
+
+@keyframes donutTooltipIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.compact .donutTooltip {
+  left: 0;
+  transform: none;
+  animation: none;
+}
+.skillDetail {
+  scroll-margin-top: 84px;
+}
+.skillDetail h2:focus {
+  outline: none;
 }
