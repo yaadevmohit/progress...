@@ -118,6 +118,15 @@ export function skillStats(state: TrackerState, today: string) {
     };
   });
 }
+export function mostRecentSession(sessions: LearningSession[]) {
+  return (
+    [...sessions].sort(
+      (a, b) =>
+        b.activityDate.localeCompare(a.activityDate) ||
+        b.createdAt.localeCompare(a.createdAt),
+    )[0] ?? null
+  );
+}
 export function mostPractised(state: TrackerState, today: string) {
   return (
     skillStats(state, today)
