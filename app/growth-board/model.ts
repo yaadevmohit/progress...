@@ -34,6 +34,7 @@ export function resourceUrl(value: string) {
 
 export type Skill = {
   id: string;
+  parentId?: string | null;
   name: string;
   slot: number;
   color: string;
@@ -117,20 +118,52 @@ export function isActiveSkill(skill: Skill) {
 export function activeSkills(skills: Skill[]) {
   return skills.filter(isActiveSkill);
 }
+export function rootSkills<T extends Skill>(skills: T[]) {
+  return skills.filter((skill) => !skill.parentId);
+}
+export function subtreeIds(skills: Skill[], skillId: string) {
+  const ids = new Set([skillId]);
+  const pending = [skillId];
+  while (pending.length) {
+    const parent = pending.pop();
+    for (const skill of skills) {
+      if (skill.parentId === parent && !ids.has(skill.id)) {
+        ids.add(skill.id);
+        pending.push(skill.id);
+      }
+    }
+  }
+  return ids;
+}
+export function skillTrail(skills: Skill[], skillId: string) {
+  const trail: Skill[] = [],
+    seen = new Set<string>();
+  let skill = skills.find((s) => s.id === skillId);
+  while (skill && !seen.has(skill.id)) {
+    seen.add(skill.id);
+    trail.unshift(skill);
+    skill = skills.find((s) => s.id === skill?.parentId);
+  }
+  return trail;
+}
 export function practiceHistory(state: TrackerState): PracticeEntry[] {
   return [...state.sessions, ...(state.retainedPractice ?? [])];
 }
 export function skillStats(state: TrackerState, today: string) {
   const history = practiceHistory(state);
   return state.skills.map((skill) => {
-    const sessions = state.sessions.filter((s) => s.skillId === skill.id);
+    const ids = subtreeIds(state.skills, skill.id);
+    const sessions = state.sessions.filter((s) => ids.has(s.skillId));
     return {
       ...skill,
-      seconds: history
+      ownSeconds: history
         .filter((s) => s.skillId === skill.id)
         .reduce((sum, s) => sum + s.durationSeconds, 0),
+      seconds: history
+        .filter((s) => ids.has(s.skillId))
+        .reduce((sum, s) => sum + s.durationSeconds, 0),
       streak: currentStreak(
-        history.filter((s) => s.skillId === skill.id),
+        history.filter((s) => ids.has(s.skillId)),
         today,
       ),
       lastSession: [...sessions].sort(
@@ -147,14 +180,13 @@ export function focusSkill(
   today: string,
 ) {
   const skill = skillStats(state, today).find((skill) => skill.id === skillId);
+  const ids = subtreeIds(state.skills, skillId);
   return skill
     ? {
         skill,
-        sessions: state.sessions.filter(
-          (session) => session.skillId === skillId,
-        ),
-        activity: practiceHistory(state).filter(
-          (session) => session.skillId === skillId,
+        sessions: state.sessions.filter((session) => ids.has(session.skillId)),
+        activity: practiceHistory(state).filter((session) =>
+          ids.has(session.skillId),
         ),
       }
     : null;
@@ -171,7 +203,7 @@ export function mostRecentSession(sessions: LearningSession[]) {
 export function mostPractised(state: TrackerState, today: string) {
   return (
     skillStats(state, today)
-      .filter((s) => s.seconds > 0)
+      .filter((s) => !s.parentId && s.seconds > 0)
       .sort(
         (a, b) =>
           b.seconds - a.seconds ||
@@ -301,10 +333,31 @@ export function decodeTracker(raw: string): {
       if (ids.has(skill.id)) throw Error();
       ids.add(skill.id);
       if (!skill.status || skill.status === "active") {
-        const name = skill.name.trim().toLowerCase();
-        if (names.has(name) || slots.has(skill.slot)) throw Error();
+        const name = JSON.stringify([
+          skill.parentId ?? null,
+          skill.name.trim().toLowerCase(),
+        ]);
+        if (names.has(name) || (!skill.parentId && slots.has(skill.slot)))
+          throw Error();
         names.add(name);
-        slots.add(skill.slot);
+        if (!skill.parentId) slots.add(skill.slot);
+      }
+    }
+    const skills = value.skills as Skill[];
+    for (const skill of skills) {
+      if (
+        skill.parentId != null &&
+        (!id(skill.parentId) || !ids.has(skill.parentId))
+      )
+        throw Error();
+      const seen = new Set([skill.id]);
+      let parentId = skill.parentId;
+      while (parentId) {
+        if (seen.has(parentId)) throw Error();
+        seen.add(parentId);
+        const parent = skills.find((s) => s.id === parentId)!;
+        if (isActiveSkill(skill) && !isActiveSkill(parent)) throw Error();
+        parentId = parent.parentId;
       }
     }
     const sessionIds = new Set<string>();
@@ -389,6 +442,7 @@ export function decodeTracker(raw: string): {
         ...state,
         skills: state.skills.map((skill) => ({
           ...skill,
+          parentId: skill.parentId ?? null,
           description: skill.description ?? "",
           status: skill.status ?? "active",
         })),
@@ -409,7 +463,7 @@ export const PRACTICE_COLORS = COLORS;
 
 // Preserve card order from the saved skills, then append one available slot.
 export function visibleSkillSlots(skills: Skill[]) {
-  const slots = activeSkills(skills).map((skill) => skill.slot);
+  const slots = activeSkills(rootSkills(skills)).map((skill) => skill.slot);
   const next = Array.from({ length: MAX_SKILLS }, (_, slot) => slot).find(
     (slot) => !slots.includes(slot),
   );
@@ -541,4 +595,27 @@ export function activityTimeline(
     minOffset,
     offset: safeOffset,
   };
+}
+
+// Immediate children and direct practice partition a branch without double counting.
+export function skillDistribution(
+  stats: ReturnType<typeof skillStats>,
+  skillId: string | null,
+) {
+  if (!skillId) return rootSkills(stats);
+  const parent = stats.find((s) => s.id === skillId);
+  if (!parent) return [];
+  const children = stats.filter((s) => s.parentId === skillId);
+  return [
+    ...(parent.ownSeconds
+      ? [
+          {
+            ...parent,
+            name: children.length ? `${parent.name} (direct)` : parent.name,
+            seconds: parent.ownSeconds,
+          },
+        ]
+      : []),
+    ...children,
+  ];
 }

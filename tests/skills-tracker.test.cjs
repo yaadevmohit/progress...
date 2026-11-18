@@ -37,7 +37,7 @@ function load(file, dependencies = {}, globals = {}) {
   );
   return exports;
 }
-const model = load("app/skills-tracker/model.ts");
+const model = load("app/growth-board/model.ts");
 const session = (day, skillId = "a", seconds = 1500) => ({
   id: crypto.randomUUID(),
   skillId,
@@ -71,7 +71,7 @@ function browserStore() {
     setItem: (key, value) => values.set(key, value),
   };
   const store = load(
-    "app/skills-tracker/storage.ts",
+    "app/growth-board/storage.ts",
     { "./model": model, react: {} },
     {
       localStorage,
@@ -409,14 +409,14 @@ test("daily streak celebration happens once across reloads and becomes available
     setItem: (key, value) => values.set(key, value),
   };
   const first = load(
-    "app/skills-tracker/daily-streak.ts",
+    "app/growth-board/daily-streak.ts",
     {},
     { localStorage },
   );
   assert.equal(first.claimDailyStreak("2026-11-17"), true);
   assert.equal(first.claimDailyStreak("2026-11-17"), false);
   const reloaded = load(
-    "app/skills-tracker/daily-streak.ts",
+    "app/growth-board/daily-streak.ts",
     {},
     { localStorage },
   );
@@ -431,7 +431,7 @@ test("daily streak celebration still avoids repeats when storage is blocked", ()
     },
   };
   const daily = load(
-    "app/skills-tracker/daily-streak.ts",
+    "app/growth-board/daily-streak.ts",
     {},
     { localStorage },
   );
@@ -489,7 +489,7 @@ test("focusing a skill isolates its activity and leaves all progress unchanged",
 });
 
 test("donut targets support one full ring, small arcs and large arcs without invalid coordinates", () => {
-  const { donutPath } = load("app/skills-tracker/donut-path.ts");
+  const { donutPath } = load("app/growth-board/donut-path.ts");
   assert.equal(donutPath(0, 0), "");
   const full = donutPath(0, 100);
   assert.equal((full.match(/A 49 49/g) || []).length, 2);
@@ -503,8 +503,8 @@ test("donut targets support one full ring, small arcs and large arcs without inv
 test("donut renders individually focusable skill buttons with time, percentage and selection state", () => {
   const React = require("react"),
     { renderToStaticMarkup } = require("react-dom/server");
-  const paths = load("app/skills-tracker/donut-path.ts");
-  const Donut = load("app/skills-tracker/PracticeDonut.tsx", {
+  const paths = load("app/growth-board/donut-path.ts");
+  const Donut = load("app/growth-board/PracticeDonut.tsx", {
     "./model": model,
     "./donut-path": paths,
     "./tracker.module.css": { default: {} },
@@ -537,26 +537,27 @@ test("focused skill detail renders its resource links and sessions without leaki
   const React = require("react"),
     { renderToStaticMarkup } = require("react-dom/server");
   const css = { "./tracker.module.css": { default: {} } };
-  const Resources = load("app/skills-tracker/SkillResources.tsx", {
+  const Resources = load("app/growth-board/SkillResources.tsx", {
     "./storage": {},
     ...css,
   }).default;
-  const Modal = load("app/skills-tracker/TrackerModal.tsx", css).default;
-  const Actions = load("app/skills-tracker/SkillActions.tsx", {
-    "./storage": {},
-    "./model": model,
-    "./TrackerModal": { default: Modal },
-    ...css,
-  }).default;
-  const DeleteButton = load("app/skills-tracker/DeleteSessionButton.tsx", {
+  const Modal = load("app/growth-board/TrackerModal.tsx", css).default;
+  const Actions = load("app/growth-board/SkillActions.tsx", {
     "./storage": {},
     "./model": model,
     "./TrackerModal": { default: Modal },
     ...css,
   }).default;
-  const Detail = load("app/skills-tracker/SkillDetail.tsx", {
+  const DeleteButton = load("app/growth-board/DeleteSessionButton.tsx", {
+    "./storage": {},
+    "./model": model,
+    "./TrackerModal": { default: Modal },
+    ...css,
+  }).default;
+  const Detail = load("app/growth-board/SkillDetail.tsx", {
     "./model": model,
     "./SkillResources": { default: Resources },
+    "./SkillComposer": { default: () => null },
     "./SkillActions": { default: Actions },
     "./DeleteSessionButton": { default: DeleteButton },
     ...css,
@@ -569,7 +570,11 @@ test("focused skill detail renders its resource links and sessions without leaki
   };
   const state = {
     ...model.EMPTY_STATE,
-    skills: [skill("a", 0), chosen],
+    skills: [
+      skill("a", 0),
+      chosen,
+      { ...skill("nested", 2), parentId: chosen.id },
+    ],
     sessions: [
       { ...session("2026-11-17", "a", 3600), notes: "Other skill notes" },
       { ...session("2026-11-17", "b", 600), notes: "Selected practice notes" },
@@ -579,6 +584,9 @@ test("focused skill detail renders its resource links and sessions without leaki
   const markup = renderToStaticMarkup(
     React.createElement(Detail, {
       ...focused,
+      allSkills: state.skills,
+      stats: model.skillStats(state, "2026-11-17"),
+      onSelect: () => {},
       onBack: () => {},
       onLog: () => {},
     }),
@@ -588,6 +596,10 @@ test("focused skill detail renders its resource links and sessions without leaki
   assert.ok(markup.includes("Selected practice notes"));
   assert.ok(!markup.includes("Other skill notes"));
   assert.ok(markup.includes("All skills"));
+  assert.ok(markup.includes("Subskill"));
+  assert.ok(markup.includes("nested"));
+  assert.ok(markup.includes("Direct practice"));
+  assert.ok(markup.includes("Add subskill"));
 });
 
 test("older saves receive empty descriptions and active status without losing sessions or resources", () => {
@@ -742,4 +754,128 @@ test("delete all sessions only removes the chosen skill's entries and rejects du
   const invalid = b.read();
   invalid.retainedPractice.push(invalid.retainedPractice[0]);
   assert.ok(model.decodeTracker(JSON.stringify(invalid)).error);
+});
+
+test("navbar scrolls out naturally before revealing only on upward motion", () => {
+  const { INITIAL_HEADER, nextHeaderMotion } = load(
+    "app/growth-board/scroll-header.ts",
+  );
+  let state = nextHeaderMotion(INITIAL_HEADER, 40, 70);
+  assert.equal(state.floating, false);
+  state = nextHeaderMotion(state, 100, 70);
+  assert.equal(state.floating, true);
+  assert.equal(state.visible, false);
+  assert.equal(state.animated, false);
+  state = nextHeaderMotion(state, 97, 70);
+  assert.equal(state.visible, false);
+  state = nextHeaderMotion(state, 92, 70);
+  assert.equal(state.visible, true);
+  assert.equal(state.animated, true);
+  state = nextHeaderMotion(state, 95, 70);
+  assert.equal(state.visible, true);
+  state = nextHeaderMotion(state, 100, 70);
+  assert.equal(state.visible, false);
+});
+
+test("navbar remains revealed approaching the top, resets at the top and handles restored scroll", () => {
+  const { INITIAL_HEADER, nextHeaderMotion } = load(
+    "app/growth-board/scroll-header.ts",
+  );
+  let state = nextHeaderMotion(INITIAL_HEADER, 500, 70);
+  assert.equal(state.visible, false);
+  state = nextHeaderMotion(state, 480, 70);
+  assert.equal(state.visible, true);
+  state = nextHeaderMotion(state, 30, 70);
+  assert.equal(state.floating, true);
+  assert.equal(state.visible, true);
+  state = nextHeaderMotion(state, 0, 70);
+  assert.equal(state.floating, false);
+  assert.equal(state.animated, false);
+  assert.equal(nextHeaderMotion(state, -10, 70).y, 0);
+});
+
+test("nested skills roll up time and partition each donut level without double counting", () => {
+  const a = skill("a", 0),
+    b = { ...skill("b", 1), parentId: "a" },
+    c = { ...skill("c", 2), parentId: "b" };
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [a, b, c],
+    sessions: [
+      session("2026-11-14", "a", 600),
+      session("2026-11-14", "b", 1200),
+      session("2026-11-14", "c", 1800),
+    ],
+  };
+  const stats = model.skillStats(state, "2026-11-14");
+  assert.equal(stats[0].seconds, 3600);
+  assert.equal(stats[1].seconds, 3000);
+  assert.equal(stats[1].ownSeconds, 1200);
+  for (const [id, total] of [
+    [null, 3600],
+    ["a", 3600],
+    ["b", 3000],
+    ["c", 1800],
+  ])
+    assert.equal(
+      model.skillDistribution(stats, id).reduce((sum, s) => sum + s.seconds, 0),
+      total,
+    );
+  assert.equal(model.focusSkill(state, "b", "2026-11-14").sessions.length, 2);
+  assert.equal(model.mostPractised(state, "2026-11-14").id, "a");
+  assert.equal(
+    model
+      .skillTrail(state.skills, "c")
+      .map((s) => s.id)
+      .join("/"),
+    "a/b/c",
+  );
+  assert.equal(model.visibleSkillSlots(state.skills).join(","), "0,1");
+  assert.equal(model.decodeTracker(JSON.stringify(state)).error, null);
+  for (const parentId of ["missing", "c"]) {
+    const bad = { ...state, skills: [{ ...a, parentId }, b, c] };
+    assert.ok(model.decodeTracker(JSON.stringify(bad)).error);
+  }
+});
+
+test("subskills work beyond six root slots and validate sibling names and parent lifecycle", async () => {
+  const { store, read } = browserStore();
+  const roots = [];
+  for (let i = 0; i < 6; i++) roots.push(await store.addSkill(`Root ${i}`));
+  await assert.rejects(store.addSkill("Seventh"), /six/);
+  const child = await store.addSkill("Python", undefined, "", roots[0].id);
+  const grandchild = await store.addSkill("Basics", undefined, "", child.id);
+  await store.addSkill("Python", undefined, "", roots[1].id);
+  await assert.rejects(
+    store.addSkill("Python", undefined, "", roots[0].id),
+    /already/,
+  );
+  await store.logSession(grandchild.id, 25, "2026-11-14", "");
+  assert.equal(
+    model.focusSkill(read(), roots[0].id, "2026-11-14").skill.seconds,
+    1500,
+  );
+  await store.startTimer(grandchild.id, 25, "");
+  await assert.rejects(store.deactivateSkill(roots[0].id, "archived"), /timer/);
+  await store.cancelTimer(read().activeTimer.id);
+  await store.deactivateSkill(roots[0].id, "archived");
+  assert.equal(
+    read().skills.find((s) => s.id === grandchild.id).status,
+    "archived",
+  );
+  await assert.rejects(store.restoreSkill(child.id), /parent/);
+  await store.restoreSkill(roots[0].id);
+  await store.restoreSkill(child.id);
+  await store.restoreSkill(grandchild.id);
+  await store.deleteSession(read().sessions[0].id);
+  assert.equal(
+    model.focusSkill(read(), roots[0].id, "2026-11-14").skill.seconds,
+    1500,
+  );
+  await store.deactivateSkill(child.id, "deleted");
+  assert.equal(
+    read().skills.find((s) => s.id === grandchild.id).status,
+    "deleted",
+  );
+  assert.equal(model.decodeTracker(JSON.stringify(read())).error, null);
 });

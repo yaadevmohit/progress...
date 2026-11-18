@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "Skills Tracker",
+  title: "Growth Board",
   description:
     "A little room for what you want to learn. Track skills and learning time, saved in your browser.",
 };
-export default function SkillsTrackerLayout({
+export default function GrowthBoardLayout({
   children,
 }: {
   children: React.ReactNode;

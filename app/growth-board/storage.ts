@@ -3,6 +3,8 @@ import { useMemo, useSyncExternalStore } from "react";
 import {
   COLORS,
   activeSkills,
+  rootSkills,
+  subtreeIds,
   isActiveSkill,
   decodeTracker,
   EMPTY_STATE,
@@ -78,6 +80,7 @@ export async function addSkill(
   name: string,
   requestedSlot?: number,
   description = "",
+  parentId: string | null = null,
 ): Promise<Skill> {
   return mutate((state) => {
     const clean = name.trim();
@@ -85,21 +88,28 @@ export async function addSkill(
       throw new Error("Enter a skill name between 1 and 60 characters.");
     if (description.trim().length > 2000)
       throw new Error("Keep the description under 2,000 characters.");
-    const active = activeSkills(state.skills);
-    if (active.length >= MAX_SKILLS)
+    const active = activeSkills(state.skills).filter(
+      (s) => (s.parentId ?? null) === parentId,
+    );
+    const parent = state.skills.find((s) => s.id === parentId);
+    if (parentId && (!parent || !isActiveSkill(parent)))
+      throw new Error("Choose an active parent skill.");
+    if (!parentId && active.length >= MAX_SKILLS)
       throw new Error("You can learn up to six skills at a time.");
     if (active.some((s) => s.name.toLowerCase() === clean.toLowerCase()))
       throw new Error("That skill is already on your dashboard.");
     const free = Array.from({ length: MAX_SKILLS }, (_, i) => i).filter(
       (i) => !active.some((s) => s.slot === i),
     );
-    const slot =
-      requestedSlot !== undefined && free.includes(requestedSlot)
+    const slot = parent
+      ? (parent.slot + 1 + active.length) % MAX_SKILLS
+      : requestedSlot !== undefined && free.includes(requestedSlot)
         ? requestedSlot
         : free[0];
     const skill = {
       id: crypto.randomUUID(),
       name: clean,
+      parentId,
       slot,
       color: COLORS[slot],
       description: description.trim(),
@@ -238,7 +248,7 @@ export function exportTracker() {
     url = URL.createObjectURL(blob),
     link = document.createElement("a");
   link.href = url;
-  link.download = `skills-tracker-${localDay()}.json`;
+  link.download = `growth-board-${localDay()}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -335,7 +345,10 @@ export async function updateSkill(
     if (
       isActiveSkill(skill) &&
       activeSkills(state.skills).some(
-        (s) => s.id !== skillId && s.name.toLowerCase() === clean.toLowerCase(),
+        (s) =>
+          s.id !== skillId &&
+          (s.parentId ?? null) === (skill.parentId ?? null) &&
+          s.name.toLowerCase() === clean.toLowerCase(),
       )
     )
       throw new Error("That skill is already on your dashboard.");
@@ -386,13 +399,14 @@ export async function deactivateSkill(
     if (!skill) throw new Error("Skill not found.");
     if (skill.status === "deleted")
       throw new Error("This skill has already been deleted.");
-    if (state.activeTimer?.skillId === skillId)
+    const affected = subtreeIds(state.skills, skillId);
+    if (state.activeTimer && affected.has(state.activeTimer.skillId))
       throw new Error("Finish or cancel the timer for this skill first.");
     return {
       state: {
         ...state,
         skills: state.skills.map((s) =>
-          s.id === skillId
+          affected.has(s.id) && s.status !== "deleted"
             ? { ...s, status, deactivatedAt: new Date().toISOString() }
             : s,
         ),
@@ -406,18 +420,24 @@ export async function restoreSkill(skillId: string) {
     const skill = state.skills.find((s) => s.id === skillId);
     if (!skill || skill.status !== "archived")
       throw new Error("Only archived skills can be restored.");
-    const active = activeSkills(state.skills);
-    if (active.length >= MAX_SKILLS)
+    const parent = state.skills.find((s) => s.id === skill.parentId);
+    if (skill.parentId && (!parent || !isActiveSkill(parent)))
+      throw new Error("Restore the parent skill first.");
+    const active = activeSkills(state.skills).filter(
+      (s) => (s.parentId ?? null) === (skill.parentId ?? null),
+    );
+    if (!skill.parentId && rootSkills(active).length >= MAX_SKILLS)
       throw new Error("Make room in your six active skill slots first.");
     if (active.some((s) => s.name.toLowerCase() === skill.name.toLowerCase()))
       throw new Error(
         "A skill with this name is already active. Edit its name before restoring it.",
       );
-    const slot = !active.some((s) => s.slot === skill.slot)
-      ? skill.slot
-      : Array.from({ length: MAX_SKILLS }, (_, i) => i).find(
-          (i) => !active.some((s) => s.slot === i),
-        )!;
+    const slot =
+      skill.parentId || !active.some((s) => s.slot === skill.slot)
+        ? skill.slot
+        : Array.from({ length: MAX_SKILLS }, (_, i) => i).find(
+            (i) => !active.some((s) => s.slot === i),
+          )!;
     return {
       state: {
         ...state,

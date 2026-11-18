@@ -1,6 +1,8 @@
-# skills tracker
+# growth board
 
 track up to six skills, log practice, run a focus timer and save learning resources. built with next.js, react and typescript.
+
+open `/growth-board` to use the app.
 
 everything stays in your browser for now. there is no database or authentication.
 

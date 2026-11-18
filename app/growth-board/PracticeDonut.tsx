@@ -17,7 +17,7 @@ export default function PracticeDonut({
   const total = skills.reduce((sum, skill) => sum + skill.seconds, 0),
     segments = practiceBreakdown(skills);
   const active = segments.find((skill) => skill.id === hovered),
-    highlight = hovered ?? selectedId;
+    highlight = hovered;
   function activate(id: string) {
     setHovered(null);
     onSelect(selectedId === id ? null : id);

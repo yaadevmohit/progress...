@@ -217,8 +217,8 @@ function RemoveSkill({
     >
       <p className="mb-3 font-bold">{skill.name}</p>
       <p className="text-sm leading-relaxed text-[var(--tracker-muted)]">
-        Archive it to return later, or delete its card. Your sessions and earned
-        learning time will stay in history.
+        Archive it to return later, or delete its card. This also applies to its
+        subskills. Your sessions and earned learning time will stay in history.
       </p>
       {error && (
         <p role="alert" className="mt-3 text-sm text-[var(--tracker-error)]">
