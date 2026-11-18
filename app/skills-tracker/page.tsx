@@ -7,6 +7,7 @@ import DeleteSessionButton from "./DeleteSessionButton";
 import PastSkills from "./PastSkills";
 import SkillDetail from "./SkillDetail";
 import ThemeToggle from "./ThemeToggle";
+import ScrollHeader from "./ScrollHeader";
 import ActivityChart from "./ActivityChart";
 import PracticeDonut from "./PracticeDonut";
 import StreakFlame from "./StreakFlame";
@@ -226,7 +227,7 @@ export default function SkillsTracker() {
   }
   return (
     <div className={styles.root}>
-      <header className={styles.header}>
+      <ScrollHeader>
         <a
           href="/skills-tracker"
           className="text-xl font-extrabold tracking-tight sm:text-2xl"
@@ -264,7 +265,7 @@ export default function SkillsTracker() {
           </button>
           <ThemeToggle />
         </div>
-      </header>
+      </ScrollHeader>
       <main className={styles.main}>
         <div className={styles.stage}>
           <div className="flex flex-wrap items-center justify-between gap-3 py-4">

@@ -743,3 +743,41 @@ test("delete all sessions only removes the chosen skill's entries and rejects du
   invalid.retainedPractice.push(invalid.retainedPractice[0]);
   assert.ok(model.decodeTracker(JSON.stringify(invalid)).error);
 });
+
+test("navbar scrolls out naturally before revealing only on upward motion", () => {
+  const { INITIAL_HEADER, nextHeaderMotion } = load(
+    "app/skills-tracker/scroll-header.ts",
+  );
+  let state = nextHeaderMotion(INITIAL_HEADER, 40, 70);
+  assert.equal(state.floating, false);
+  state = nextHeaderMotion(state, 100, 70);
+  assert.equal(state.floating, true);
+  assert.equal(state.visible, false);
+  assert.equal(state.animated, false);
+  state = nextHeaderMotion(state, 97, 70);
+  assert.equal(state.visible, false);
+  state = nextHeaderMotion(state, 92, 70);
+  assert.equal(state.visible, true);
+  assert.equal(state.animated, true);
+  state = nextHeaderMotion(state, 95, 70);
+  assert.equal(state.visible, true);
+  state = nextHeaderMotion(state, 100, 70);
+  assert.equal(state.visible, false);
+});
+
+test("navbar remains revealed approaching the top, resets at the top and handles restored scroll", () => {
+  const { INITIAL_HEADER, nextHeaderMotion } = load(
+    "app/skills-tracker/scroll-header.ts",
+  );
+  let state = nextHeaderMotion(INITIAL_HEADER, 500, 70);
+  assert.equal(state.visible, false);
+  state = nextHeaderMotion(state, 480, 70);
+  assert.equal(state.visible, true);
+  state = nextHeaderMotion(state, 30, 70);
+  assert.equal(state.floating, true);
+  assert.equal(state.visible, true);
+  state = nextHeaderMotion(state, 0, 70);
+  assert.equal(state.floating, false);
+  assert.equal(state.animated, false);
+  assert.equal(nextHeaderMotion(state, -10, 70).y, 0);
+});
