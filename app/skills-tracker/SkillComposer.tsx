@@ -4,10 +4,12 @@ import { addSkill } from "./storage";
 import type { Skill } from "./model";
 export default function SkillComposer({
   slot,
+  parentId,
   onSaved,
   onCancel,
 }: {
   slot?: number;
+  parentId?: string;
   onSaved: (skill: Skill) => void;
   onCancel: () => void;
 }) {
@@ -19,7 +21,7 @@ export default function SkillComposer({
     if (busy) return;
     setBusy(true);
     try {
-      onSaved(await addSkill(name, slot, description));
+      onSaved(await addSkill(name, slot, description, parentId));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -27,12 +29,16 @@ export default function SkillComposer({
     }
   }
   return (
-    <div role="group" aria-label="Add a skill" className="space-y-3">
+    <div
+      role="group"
+      aria-label={parentId ? "Add a subskill" : "Add a skill"}
+      className="space-y-3"
+    >
       <label className="block text-sm font-bold">
         What are you learning?
         <input
           autoFocus
-          aria-label="Skill name"
+          aria-label={parentId ? "Subskill name" : "Skill name"}
           maxLength={60}
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -48,7 +54,7 @@ export default function SkillComposer({
             }
           }}
           className="mt-2 w-full rounded-lg border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 text-[var(--tracker-ink)]"
-          placeholder="e.g. Spanish"
+          placeholder={parentId ? "e.g. Conversation" : "e.g. Spanish"}
         />
       </label>
       <label className="block text-xs font-bold">
@@ -73,7 +79,7 @@ export default function SkillComposer({
           onClick={() => void save()}
           className="rounded-lg bg-[var(--tracker-action)] px-3 py-2 font-bold text-[var(--tracker-on-action)] disabled:opacity-40"
         >
-          Add skill
+          {parentId ? "Add subskill" : "Add skill"}
         </button>
         <button type="button" onClick={onCancel}>
           Cancel

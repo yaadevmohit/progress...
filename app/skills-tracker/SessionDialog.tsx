@@ -3,7 +3,13 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import DurationDial from "../ui/components/DurationDial";
 import SkillComposer from "./SkillComposer";
-import { activeSkills, localDay, type TrackerState } from "./model";
+import {
+  rootSkills,
+  skillTrail,
+  activeSkills,
+  localDay,
+  type TrackerState,
+} from "./model";
 import { logSession, startTimer } from "./storage";
 import styles from "./tracker.module.css";
 export default function SessionDialog({
@@ -108,8 +114,9 @@ export default function SessionDialog({
             <span className="mb-2 block text-sm font-bold">Skill</span>
             <details ref={picker} className="relative">
               <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] p-3 text-sm">
-                {state.skills.find((s) => s.id === skillId)?.name ||
-                  "Choose a skill"}
+                {skillTrail(state.skills, skillId)
+                  .map((s) => s.name)
+                  .join(" / ") || "Choose a skill"}
                 <ChevronDown size={17} />
               </summary>
               <div className="absolute z-10 mt-1 max-h-52 w-full overflow-auto rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-field)] p-2 shadow-lg">
@@ -125,10 +132,12 @@ export default function SessionDialog({
                     }}
                     className="block w-full rounded-lg p-3 text-left text-sm hover:bg-[var(--tracker-hover)]"
                   >
-                    {skill.name}
+                    {skillTrail(state.skills, skill.id)
+                      .map((s) => s.name)
+                      .join(" / ")}
                   </button>
                 ))}
-                {available.length < 6 ? (
+                {rootSkills(available).length < 6 ? (
                   <button
                     type="button"
                     onClick={() => {

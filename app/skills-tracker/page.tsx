@@ -16,6 +16,8 @@ import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
   activeSkills,
+  rootSkills,
+  skillDistribution,
   isActiveSkill,
   practiceHistory,
   PRACTICE_COLORS,
@@ -154,14 +156,22 @@ export default function SkillsTracker() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const attemptedTimer = useRef<string | null>(null);
   const history = practiceHistory(state);
-  const learningSkills = activeSkills(state.skills);
+  const learningSkills = activeSkills(rootSkills(state.skills));
   const stats = skillStats(state, today),
-    leader = mostPractised(state, today),
+    globalLeader = mostPractised(state, today),
     streak = currentStreak(history, today),
-    total = stats.reduce((sum, s) => sum + s.seconds, 0),
-    share = leader ? Math.round((leader.seconds / total) * 100) : 0;
+    total = history.reduce((sum, s) => sum + s.durationSeconds, 0);
   const focused = selectedId ? focusSkill(state, selectedId, today) : null;
   const selectedSkill = focused?.skill ?? null;
+  const distribution = skillDistribution(stats, selectedSkill?.id ?? null);
+  const leader = selectedSkill
+    ? [...distribution]
+        .filter((s) => s.seconds > 0)
+        .sort((a, b) => b.seconds - a.seconds)[0]
+    : globalLeader;
+  const scopeTotal = selectedSkill?.seconds ?? total;
+  const share =
+    leader && scopeTotal ? Math.round((leader.seconds / scopeTotal) * 100) : 0;
   const activitySessions = focused?.activity ?? history;
   const visibleSessions = focused?.sessions ?? state.sessions;
   const latestSession = mostRecentSession(state.sessions);
@@ -340,13 +350,17 @@ export default function SkillsTracker() {
                 className={`${styles.panel} ${styles.leader} ${timer || completed ? styles.compact : ""}`}
               >
                 <PracticeDonut
-                  skills={stats}
+                  skills={distribution}
                   selectedId={selectedSkill?.id ?? null}
-                  onSelect={setSelectedId}
+                  onSelect={(id) =>
+                    setSelectedId(id ?? selectedSkill?.parentId ?? null)
+                  }
                 />
                 <div className={styles.leaderHeading}>
                   <p className="text-xs font-bold uppercase tracking-widest text-[var(--tracker-muted)]">
-                    The most practiced
+                    {selectedSkill
+                      ? `Within ${selectedSkill.name}`
+                      : "The most practiced"}
                   </p>
                   <h2 className="mt-2 break-words text-2xl font-bold text-[var(--tracker-ink)]">
                     {leader?.name || "Your next chapter"}{" "}
@@ -361,8 +375,10 @@ export default function SkillsTracker() {
                   className={`${styles.leaderIntro} mt-2 text-sm font-semibold leading-relaxed text-[var(--tracker-muted)]`}
                 >
                   {leader
-                    ? `${durationLabel(leader.seconds)} · ${share}% of your learning time.`
-                    : "Add a skill and log your first session. Your most-practised skill will appear here."}
+                    ? `${durationLabel(leader.seconds)} · ${share}% of ${selectedSkill ? "this skill’s" : "your learning"} time.`
+                    : selectedSkill
+                      ? "Log a session to start this skill’s breakdown."
+                      : "Add a skill and log your first session. Your most-practised skill will appear here."}
                 </p>
                 <div className={styles.leaderDetails}>
                   <div className={styles.latestSession}>
@@ -473,11 +489,15 @@ export default function SkillsTracker() {
             <div className={styles.right}>
               {selectedSkill ? (
                 <SkillDetail
+                  key={selectedSkill.id}
+                  allSkills={state.skills}
+                  stats={stats}
+                  onSelect={setSelectedId}
                   skill={selectedSkill}
                   sessions={visibleSessions}
                   onRemoved={() => setSelectedId(null)}
                   onBack={() => setSelectedId(null)}
-                  onLog={() => setSession(selectedSkill.id)}
+                  onLog={(id) => setSession(id ?? selectedSkill.id)}
                 />
               ) : (
                 <>
@@ -489,15 +509,26 @@ export default function SkillsTracker() {
                   <div className={styles.skills}>
                     {visibleSkillSlots(state.skills).map((slot) => {
                       const skill = stats.find(
-                        (s) => s.slot === slot && isActiveSkill(s),
+                        (s) =>
+                          !s.parentId && s.slot === slot && isActiveSkill(s),
                       );
                       return (
                         <div
                           key={slot}
+                          onClick={(event) => {
+                            if (
+                              skill &&
+                              !(event.target as HTMLElement).closest(
+                                "button, a, dialog",
+                              )
+                            )
+                              setSelectedId(skill.id);
+                          }}
                           className={`${styles.skill} ${skill ? styles.learnedSkill : editing === slot ? styles.composerCard : styles.empty}`}
                           style={
                             skill
                               ? {
+                                  cursor: "pointer",
                                   backgroundColor: PRACTICE_COLORS[slot],
                                   color: SKILL_TEXT_COLORS[slot],
                                 }
@@ -516,7 +547,12 @@ export default function SkillsTracker() {
                                 className="truncate pr-12 text-base font-bold"
                                 title={skill.name}
                               >
-                                {skill.name}
+                                <button
+                                  onClick={() => setSelectedId(skill.id)}
+                                  className="max-w-full truncate text-left hover:underline"
+                                >
+                                  {skill.name}
+                                </button>
                               </h3>
                               {skill.description && (
                                 <p className="mt-1 line-clamp-2 text-xs">
@@ -526,6 +562,22 @@ export default function SkillsTracker() {
                               <div className="my-1 text-3xl font-bold tracking-tight">
                                 {durationLabel(skill.seconds)}
                               </div>
+                              {stats.some(
+                                (child) =>
+                                  child.parentId === skill.id &&
+                                  isActiveSkill(child),
+                              ) && (
+                                <p className="mb-2 text-xs font-semibold">
+                                  {
+                                    stats.filter(
+                                      (child) =>
+                                        child.parentId === skill.id &&
+                                        isActiveSkill(child),
+                                    ).length
+                                  }{" "}
+                                  subskills
+                                </p>
+                              )}
                               <div className={styles.skillFooter}>
                                 <span className={styles.skillStreak}>
                                   <StreakFlame

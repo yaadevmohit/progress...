@@ -11,26 +11,31 @@ CREATE TABLE users (
 CREATE TABLE skills (
   id uuid PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  parent_id uuid,
   name varchar(60) NOT NULL CHECK (length(trim(name)) > 0),
   slot smallint NOT NULL CHECK (slot BETWEEN 0 AND 5),
   color varchar(7) NOT NULL CHECK (color ~ '^#[0-9a-fA-F]{6}$'),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, id),
-  UNIQUE (user_id, slot)
+  FOREIGN KEY (user_id, parent_id) REFERENCES skills(user_id, id),
+  CHECK (parent_id IS NULL OR parent_id <> id)
 );
-CREATE UNIQUE INDEX skills_unique_name ON skills (user_id, lower(trim(name)));
+CREATE UNIQUE INDEX skills_root_slots ON skills (user_id, slot) WHERE parent_id IS NULL;
+CREATE UNIQUE INDEX skills_root_names ON skills (user_id, lower(trim(name))) WHERE parent_id IS NULL;
+CREATE UNIQUE INDEX skills_sibling_names ON skills (user_id, parent_id, lower(trim(name))) WHERE parent_id IS NOT NULL;
+-- Add status-aware indexes and transactional cycle checks before database integration.
 
 -- Serialize inserts for the same owner before enforcing the six-skill cap.
 CREATE FUNCTION limit_skills() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM 1 FROM users WHERE id = NEW.user_id FOR UPDATE;
-  IF (SELECT count(*) FROM skills WHERE user_id = NEW.user_id AND id <> NEW.id) >= 6 THEN
-    RAISE EXCEPTION 'A learner can have at most six skills';
+  IF NEW.parent_id IS NULL AND (SELECT count(*) FROM skills WHERE user_id = NEW.user_id AND parent_id IS NULL AND id <> NEW.id) >= 6 THEN
+    RAISE EXCEPTION 'A learner can have at most six top-level skills';
   END IF;
   RETURN NEW;
 END;
 $$;
-CREATE TRIGGER enforce_skill_limit BEFORE INSERT OR UPDATE OF user_id ON skills
+CREATE TRIGGER enforce_skill_limit BEFORE INSERT OR UPDATE OF user_id, parent_id ON skills
   FOR EACH ROW EXECUTE FUNCTION limit_skills();
 
 -- Optional learning links: zero or many resources per skill.

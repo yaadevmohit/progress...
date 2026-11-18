@@ -78,8 +78,16 @@ The most practiced card centres the overall streak. Its first daily celebration 
 
 Latest session is selected across all skills by practice date, with the logging timestamp breaking ties on the same date. The most practiced skill is still selected independently by total learning time.
 
-Selecting a donut segment filters Activity and replaces the skill grid with that skill’s detail card. Hovering or focusing a segment shows its name, time and percentage of all learning time. Enter or space selects it. All skills, or selecting the active segment again, clears the selection. The overall streak, most practiced skill and donut totals remain global. Selection is temporary and does not write to local storage.
+Selecting a donut segment filters Activity and replaces the skill grid with that skill’s detail card. Hovering or focusing a segment shows its name, time and percentage of all learning time. Enter or space selects it. All skills, or selecting the active segment again, clears the selection. The overall streak and latest session remain global. The donut shows the selected skill’s direct practice and immediate subskills; each subskill includes time from its descendants. These slices partition the total without counting sessions twice. Selection is temporary and does not write to local storage.
 
 The dashboard columns align at the top rather than stretching each other. This keeps the summary card’s height independent of the filtered detail panel. Its normal view has a taller 560px baseline with extra space between the chart, latest session and overall streak. The active timer still uses the compact layout.
 
 The navbar scrolls away with the page. Once outside the viewport it slides back in after upward scrolling, then hides on downward scrolling. A small movement threshold avoids jitter. Its original space is reserved to prevent layout jumps, and hidden controls are inert.
+
+## nested skills
+
+Skills have an optional `parent_id` pointing to another skill owned by the same learner. A null parent means a top-level skill. The six-card limit applies only to active top-level skills. Subskills can nest at any depth; names are unique among active siblings. Local saves without a parent remain top-level skills.
+
+Sessions always belong to the exact skill practiced. Parent totals and streaks include descendants, calculated when reading rather than duplicated in storage. Direct practice stays separate in each donut breakdown. Resources and descriptions belong to individual skills. Archived or deleted descendants still contribute earned time. Archiving or deleting a parent also deactivates descendants; restore parents before individual subskills. A running timer anywhere in the branch prevents deactivation.
+
+A future database implementation must reject cycles and active children under inactive parents in a transaction. The SQL remains a design draft; this feature uses local storage only.

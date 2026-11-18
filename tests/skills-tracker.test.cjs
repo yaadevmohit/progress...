@@ -557,6 +557,7 @@ test("focused skill detail renders its resource links and sessions without leaki
   const Detail = load("app/skills-tracker/SkillDetail.tsx", {
     "./model": model,
     "./SkillResources": { default: Resources },
+    "./SkillComposer": { default: () => null },
     "./SkillActions": { default: Actions },
     "./DeleteSessionButton": { default: DeleteButton },
     ...css,
@@ -569,7 +570,11 @@ test("focused skill detail renders its resource links and sessions without leaki
   };
   const state = {
     ...model.EMPTY_STATE,
-    skills: [skill("a", 0), chosen],
+    skills: [
+      skill("a", 0),
+      chosen,
+      { ...skill("nested", 2), parentId: chosen.id },
+    ],
     sessions: [
       { ...session("2026-11-17", "a", 3600), notes: "Other skill notes" },
       { ...session("2026-11-17", "b", 600), notes: "Selected practice notes" },
@@ -579,6 +584,9 @@ test("focused skill detail renders its resource links and sessions without leaki
   const markup = renderToStaticMarkup(
     React.createElement(Detail, {
       ...focused,
+      allSkills: state.skills,
+      stats: model.skillStats(state, "2026-11-17"),
+      onSelect: () => {},
       onBack: () => {},
       onLog: () => {},
     }),
@@ -588,6 +596,10 @@ test("focused skill detail renders its resource links and sessions without leaki
   assert.ok(markup.includes("Selected practice notes"));
   assert.ok(!markup.includes("Other skill notes"));
   assert.ok(markup.includes("All skills"));
+  assert.ok(markup.includes("Subskill"));
+  assert.ok(markup.includes("nested"));
+  assert.ok(markup.includes("Direct practice"));
+  assert.ok(markup.includes("Add subskill"));
 });
 
 test("older saves receive empty descriptions and active status without losing sessions or resources", () => {
@@ -780,4 +792,90 @@ test("navbar remains revealed approaching the top, resets at the top and handles
   assert.equal(state.floating, false);
   assert.equal(state.animated, false);
   assert.equal(nextHeaderMotion(state, -10, 70).y, 0);
+});
+
+test("nested skills roll up time and partition each donut level without double counting", () => {
+  const a = skill("a", 0),
+    b = { ...skill("b", 1), parentId: "a" },
+    c = { ...skill("c", 2), parentId: "b" };
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [a, b, c],
+    sessions: [
+      session("2026-11-14", "a", 600),
+      session("2026-11-14", "b", 1200),
+      session("2026-11-14", "c", 1800),
+    ],
+  };
+  const stats = model.skillStats(state, "2026-11-14");
+  assert.equal(stats[0].seconds, 3600);
+  assert.equal(stats[1].seconds, 3000);
+  assert.equal(stats[1].ownSeconds, 1200);
+  for (const [id, total] of [
+    [null, 3600],
+    ["a", 3600],
+    ["b", 3000],
+    ["c", 1800],
+  ])
+    assert.equal(
+      model.skillDistribution(stats, id).reduce((sum, s) => sum + s.seconds, 0),
+      total,
+    );
+  assert.equal(model.focusSkill(state, "b", "2026-11-14").sessions.length, 2);
+  assert.equal(model.mostPractised(state, "2026-11-14").id, "a");
+  assert.equal(
+    model
+      .skillTrail(state.skills, "c")
+      .map((s) => s.id)
+      .join("/"),
+    "a/b/c",
+  );
+  assert.equal(model.visibleSkillSlots(state.skills).join(","), "0,1");
+  assert.equal(model.decodeTracker(JSON.stringify(state)).error, null);
+  for (const parentId of ["missing", "c"]) {
+    const bad = { ...state, skills: [{ ...a, parentId }, b, c] };
+    assert.ok(model.decodeTracker(JSON.stringify(bad)).error);
+  }
+});
+
+test("subskills work beyond six root slots and validate sibling names and parent lifecycle", async () => {
+  const { store, read } = browserStore();
+  const roots = [];
+  for (let i = 0; i < 6; i++) roots.push(await store.addSkill(`Root ${i}`));
+  await assert.rejects(store.addSkill("Seventh"), /six/);
+  const child = await store.addSkill("Python", undefined, "", roots[0].id);
+  const grandchild = await store.addSkill("Basics", undefined, "", child.id);
+  await store.addSkill("Python", undefined, "", roots[1].id);
+  await assert.rejects(
+    store.addSkill("Python", undefined, "", roots[0].id),
+    /already/,
+  );
+  await store.logSession(grandchild.id, 25, "2026-11-14", "");
+  assert.equal(
+    model.focusSkill(read(), roots[0].id, "2026-11-14").skill.seconds,
+    1500,
+  );
+  await store.startTimer(grandchild.id, 25, "");
+  await assert.rejects(store.deactivateSkill(roots[0].id, "archived"), /timer/);
+  await store.cancelTimer(read().activeTimer.id);
+  await store.deactivateSkill(roots[0].id, "archived");
+  assert.equal(
+    read().skills.find((s) => s.id === grandchild.id).status,
+    "archived",
+  );
+  await assert.rejects(store.restoreSkill(child.id), /parent/);
+  await store.restoreSkill(roots[0].id);
+  await store.restoreSkill(child.id);
+  await store.restoreSkill(grandchild.id);
+  await store.deleteSession(read().sessions[0].id);
+  assert.equal(
+    model.focusSkill(read(), roots[0].id, "2026-11-14").skill.seconds,
+    1500,
+  );
+  await store.deactivateSkill(child.id, "deleted");
+  assert.equal(
+    read().skills.find((s) => s.id === grandchild.id).status,
+    "deleted",
+  );
+  assert.equal(model.decodeTracker(JSON.stringify(read())).error, null);
 });
