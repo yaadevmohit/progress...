@@ -1,7 +1,7 @@
 import { JobHuntProfileProvider } from "./job-hunt/ProfileContext";
 import type { Metadata } from "next";
 import Script from "next/script";
-import { TRACKER_THEME_SCRIPT } from "./skills-tracker/theme-config";
+import { TRACKER_THEME_SCRIPT } from "./growth-board/theme-config";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AmbientAudioProvider } from "./ui/components/AmbientAudio";

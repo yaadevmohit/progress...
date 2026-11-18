@@ -144,7 +144,7 @@ function Timer({
     </section>
   );
 }
-export default function SkillsTracker() {
+export default function GrowthBoard() {
   const { state, error: storageError, ready } = useTracker(),
     now = useClock();
   const today = now ? localDay(new Date(now)) : "2000-01-01";
@@ -204,11 +204,11 @@ export default function SkillsTracker() {
         Math.max(0, Math.ceil((timer.endsAt - now) / 1000)),
       );
       const countdown = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-      document.title = `${countdown} · Skills Tracker`;
+      document.title = `${countdown} · Growth Board`;
     } else {
       document.title = completed
-        ? "Session complete · Skills Tracker"
-        : "Skills Tracker";
+        ? "Session complete · Growth Board"
+        : "Growth Board";
     }
   }, [timer, now, completed]);
   useEffect(() => {
@@ -239,10 +239,10 @@ export default function SkillsTracker() {
     <div className={styles.root}>
       <ScrollHeader>
         <a
-          href="/skills-tracker"
+          href="/growth-board"
           className="text-xl font-extrabold tracking-tight sm:text-2xl"
         >
-          Skills Tracker<span className="text-[var(--tracker-accent)]">.</span>
+          Growth Board<span className="text-[var(--tracker-accent)]">.</span>
         </a>
         <div className={styles.headerActions}>
           <button

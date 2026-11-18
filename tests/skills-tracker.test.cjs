@@ -37,7 +37,7 @@ function load(file, dependencies = {}, globals = {}) {
   );
   return exports;
 }
-const model = load("app/skills-tracker/model.ts");
+const model = load("app/growth-board/model.ts");
 const session = (day, skillId = "a", seconds = 1500) => ({
   id: crypto.randomUUID(),
   skillId,
@@ -71,7 +71,7 @@ function browserStore() {
     setItem: (key, value) => values.set(key, value),
   };
   const store = load(
-    "app/skills-tracker/storage.ts",
+    "app/growth-board/storage.ts",
     { "./model": model, react: {} },
     {
       localStorage,
@@ -409,14 +409,14 @@ test("daily streak celebration happens once across reloads and becomes available
     setItem: (key, value) => values.set(key, value),
   };
   const first = load(
-    "app/skills-tracker/daily-streak.ts",
+    "app/growth-board/daily-streak.ts",
     {},
     { localStorage },
   );
   assert.equal(first.claimDailyStreak("2026-11-17"), true);
   assert.equal(first.claimDailyStreak("2026-11-17"), false);
   const reloaded = load(
-    "app/skills-tracker/daily-streak.ts",
+    "app/growth-board/daily-streak.ts",
     {},
     { localStorage },
   );
@@ -431,7 +431,7 @@ test("daily streak celebration still avoids repeats when storage is blocked", ()
     },
   };
   const daily = load(
-    "app/skills-tracker/daily-streak.ts",
+    "app/growth-board/daily-streak.ts",
     {},
     { localStorage },
   );
@@ -489,7 +489,7 @@ test("focusing a skill isolates its activity and leaves all progress unchanged",
 });
 
 test("donut targets support one full ring, small arcs and large arcs without invalid coordinates", () => {
-  const { donutPath } = load("app/skills-tracker/donut-path.ts");
+  const { donutPath } = load("app/growth-board/donut-path.ts");
   assert.equal(donutPath(0, 0), "");
   const full = donutPath(0, 100);
   assert.equal((full.match(/A 49 49/g) || []).length, 2);
@@ -503,8 +503,8 @@ test("donut targets support one full ring, small arcs and large arcs without inv
 test("donut renders individually focusable skill buttons with time, percentage and selection state", () => {
   const React = require("react"),
     { renderToStaticMarkup } = require("react-dom/server");
-  const paths = load("app/skills-tracker/donut-path.ts");
-  const Donut = load("app/skills-tracker/PracticeDonut.tsx", {
+  const paths = load("app/growth-board/donut-path.ts");
+  const Donut = load("app/growth-board/PracticeDonut.tsx", {
     "./model": model,
     "./donut-path": paths,
     "./tracker.module.css": { default: {} },
@@ -537,24 +537,24 @@ test("focused skill detail renders its resource links and sessions without leaki
   const React = require("react"),
     { renderToStaticMarkup } = require("react-dom/server");
   const css = { "./tracker.module.css": { default: {} } };
-  const Resources = load("app/skills-tracker/SkillResources.tsx", {
+  const Resources = load("app/growth-board/SkillResources.tsx", {
     "./storage": {},
     ...css,
   }).default;
-  const Modal = load("app/skills-tracker/TrackerModal.tsx", css).default;
-  const Actions = load("app/skills-tracker/SkillActions.tsx", {
-    "./storage": {},
-    "./model": model,
-    "./TrackerModal": { default: Modal },
-    ...css,
-  }).default;
-  const DeleteButton = load("app/skills-tracker/DeleteSessionButton.tsx", {
+  const Modal = load("app/growth-board/TrackerModal.tsx", css).default;
+  const Actions = load("app/growth-board/SkillActions.tsx", {
     "./storage": {},
     "./model": model,
     "./TrackerModal": { default: Modal },
     ...css,
   }).default;
-  const Detail = load("app/skills-tracker/SkillDetail.tsx", {
+  const DeleteButton = load("app/growth-board/DeleteSessionButton.tsx", {
+    "./storage": {},
+    "./model": model,
+    "./TrackerModal": { default: Modal },
+    ...css,
+  }).default;
+  const Detail = load("app/growth-board/SkillDetail.tsx", {
     "./model": model,
     "./SkillResources": { default: Resources },
     "./SkillComposer": { default: () => null },
@@ -758,7 +758,7 @@ test("delete all sessions only removes the chosen skill's entries and rejects du
 
 test("navbar scrolls out naturally before revealing only on upward motion", () => {
   const { INITIAL_HEADER, nextHeaderMotion } = load(
-    "app/skills-tracker/scroll-header.ts",
+    "app/growth-board/scroll-header.ts",
   );
   let state = nextHeaderMotion(INITIAL_HEADER, 40, 70);
   assert.equal(state.floating, false);
@@ -779,7 +779,7 @@ test("navbar scrolls out naturally before revealing only on upward motion", () =
 
 test("navbar remains revealed approaching the top, resets at the top and handles restored scroll", () => {
   const { INITIAL_HEADER, nextHeaderMotion } = load(
-    "app/skills-tracker/scroll-header.ts",
+    "app/growth-board/scroll-header.ts",
   );
   let state = nextHeaderMotion(INITIAL_HEADER, 500, 70);
   assert.equal(state.visible, false);

@@ -18,12 +18,18 @@ export default function Header() {
     setAuthMode(mode);
   }
 
-  if (pathname === "/get-started" || pathname.startsWith("/job-hunt") || pathname.startsWith("/skills-tracker")) return null;
+  if (
+    pathname === "/get-started" ||
+    pathname.startsWith("/job-hunt") ||
+    pathname.startsWith("/growth-board")
+  )
+    return null;
 
   return (
-    <header className={`${styles.audioSpace} sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b bg-white px-3 py-3 border-black/10 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6`}>
+    <header
+      className={`${styles.audioSpace} sticky top-0 z-40 mx-auto w-[calc(100%-0.5rem)] max-w-[calc(75rem+2px)] rounded-b-[1.75rem] border-x border-b bg-white px-3 py-3 border-black/10 text-black sm:w-[calc(100%-1rem)] sm:rounded-b-[2rem] sm:px-6`}
+    >
       <nav className="mx-auto flex max-w-6xl items-center justify-between">
-
         {/* Logo */}
         <span className="shrink-0 text-2xl leading-none font-semibold tracking-[-0.055em] sm:text-3xl">
           progress..
@@ -33,7 +39,9 @@ export default function Header() {
         <div className="flex items-center gap-2 sm:gap-3">
           {isDashboard && <LogSession />}
           {/* Desktop: Login & Sign Up visible inline */}
-          <div className={`hidden flex-row gap-2 md:flex ${isDashboard ? "border-l border-neutral-200 pl-2" : ""}`}>
+          <div
+            className={`hidden flex-row gap-2 md:flex ${isDashboard ? "border-l border-neutral-200 pl-2" : ""}`}
+          >
             <button
               type="button"
               aria-haspopup="dialog"
@@ -42,7 +50,7 @@ export default function Header() {
             >
               Log in
             </button>
-          <button
+            <button
               type="button"
               aria-haspopup="dialog"
               onClick={() => openAuth("signup")}
@@ -55,7 +63,7 @@ export default function Header() {
                   <MoveRight size={16} strokeWidth={2.5} />
                 </div>
               </div>
-          </button>
+            </button>
           </div>
 
           {/* Mobile: Hamburger toggle */}
@@ -64,12 +72,13 @@ export default function Header() {
             className={`md:hidden cursor-pointer rounded-xl p-2 transition-colors text-neutral-600 hover:bg-neutral-100`}
             aria-label="Toggle menu"
           >
-            {menuOpen
-              ? <X size={20} strokeWidth={2} />
-              : <Menu size={20} strokeWidth={2} />}
+            {menuOpen ? (
+              <X size={20} strokeWidth={2} />
+            ) : (
+              <Menu size={20} strokeWidth={2} />
+            )}
           </button>
         </div>
-
       </nav>
 
       {/* Mobile dropdown — always in DOM, animated via max-height + opacity */}
@@ -81,13 +90,23 @@ export default function Header() {
       >
         <div className="px-6 py-4 flex flex-col gap-3 text-neutral-900">
           {["Log in", "Sign up"].map((label) => (
-            <button key={label} type="button" aria-haspopup="dialog" onClick={() => openAuth(label === "Log in" ? "login" : "signup")} className={`${styles.authButton} ${label === "Log in" ? styles.login : styles.signup}`}>
+            <button
+              key={label}
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => openAuth(label === "Log in" ? "login" : "signup")}
+              className={`${styles.authButton} ${label === "Log in" ? styles.login : styles.signup}`}
+            >
               {label}
             </button>
           ))}
         </div>
       </div>
-      <AuthDialog mode={authMode} onModeChange={setAuthMode} onClose={() => setAuthMode(null)} />
+      <AuthDialog
+        mode={authMode}
+        onModeChange={setAuthMode}
+        onClose={() => setAuthMode(null)}
+      />
     </header>
   );
 }

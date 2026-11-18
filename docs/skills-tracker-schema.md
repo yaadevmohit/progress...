@@ -1,4 +1,4 @@
-# Skills Tracker: proposed database design
+# Growth Board: proposed database design
 
 This is a design only. The running tracker uses browser local storage under `progress.skills-tracker.v1`. There is no database connection, authentication, or cloud sync. The SQL beside this file is illustrative and is not a migration.
 
@@ -41,18 +41,18 @@ Dates are calendar dates, while timestamps are instants. Logging uses the browse
 
 | File | Responsibility |
 | --- | --- |
-| `app/skills-tracker/page.tsx` | Dedicated header, skill cards, totals, greeting streak and timer |
-| `app/skills-tracker/ActivityChart.tsx` | Adaptive weekly, monthly and annual activity scales with drill-down and bounded navigation |
-| `app/skills-tracker/PracticeDonut.tsx` | Interactive time distribution with hover details and keyboard selection |
-| `app/skills-tracker/SkillDetail.tsx` | Selected skill, resources, time spent and recent sessions |
-| `app/skills-tracker/ThemeToggle.tsx` | Animated light/dark switch, with a separate local preference and cross-tab updates |
-| `app/skills-tracker/StreakFlame.tsx` | Active streak glow and increase animation, respecting reduced motion |
-| `app/skills-tracker/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |
-| `app/skills-tracker/SkillComposer.tsx` | Inline skill creation, reused in cards and the session form |
-| `app/skills-tracker/SessionDialog.tsx` | Log time or start a timer, with a custom skill picker |
-| `app/skills-tracker/model.ts` | Data types, validation and progress calculations |
-| `app/skills-tracker/storage.ts` | Local storage subscriptions, writes, timer recovery and backup export |
-| `app/skills-tracker/tracker.module.css` | White/green styling, responsive layout and motion |
+| `app/growth-board/page.tsx` | Dedicated header, skill cards, totals, greeting streak and timer |
+| `app/growth-board/ActivityChart.tsx` | Adaptive weekly, monthly and annual activity scales with drill-down and bounded navigation |
+| `app/growth-board/PracticeDonut.tsx` | Interactive time distribution with hover details and keyboard selection |
+| `app/growth-board/SkillDetail.tsx` | Selected skill, resources, time spent and recent sessions |
+| `app/growth-board/ThemeToggle.tsx` | Animated light/dark switch, with a separate local preference and cross-tab updates |
+| `app/growth-board/StreakFlame.tsx` | Active streak glow and increase animation, respecting reduced motion |
+| `app/growth-board/SkillResources.tsx` | Resource section for each card: add, open and remove named learning links |
+| `app/growth-board/SkillComposer.tsx` | Inline skill creation, reused in cards and the session form |
+| `app/growth-board/SessionDialog.tsx` | Log time or start a timer, with a custom skill picker |
+| `app/growth-board/model.ts` | Data types, validation and progress calculations |
+| `app/growth-board/storage.ts` | Local storage subscriptions, writes, timer recovery and backup export |
+| `app/growth-board/tracker.module.css` | White/green styling, responsive layout and motion |
 
 The original mock `/dashboard` remains separate. The new tracker starts empty and never imports mock sessions. Web Locks serialize writes between tabs where supported; browsers without Web Locks use synchronous writes (simultaneous cross-tab edits may conflict). Corrupt saved data is not silently replaced. Use the download icon to export the stored JSON as a backup. There is no import screen yet.
 

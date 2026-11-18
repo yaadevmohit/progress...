@@ -495,7 +495,7 @@
   color: var(--tracker-accent);
 }
 
-/* Scoped to Skills Tracker; the other tools keep their own appearance. */
+/* Scoped to Growth Board; the other tools keep their own appearance. */
 :global(html[data-skills-theme="dark"]) .root {
   --tracker-bg: #0b1d51;
   --tracker-panel: #12285f;

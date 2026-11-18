@@ -248,7 +248,7 @@ export function exportTracker() {
     url = URL.createObjectURL(blob),
     link = document.createElement("a");
   link.href = url;
-  link.download = `skills-tracker-${localDay()}.json`;
+  link.download = `growth-board-${localDay()}.json`;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
