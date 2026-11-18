@@ -879,3 +879,67 @@ test("subskills work beyond six root slots and validate sibling names and parent
   );
   assert.equal(model.decodeTracker(JSON.stringify(read())).error, null);
 });
+
+function extensionBridge(browser) {
+  const responses = [];
+  let receive;
+  const window = {
+    addEventListener: (_type, callback) => { receive = callback; },
+    removeEventListener: () => {},
+    postMessage: (message) => responses.push(message),
+  };
+  const bridge = load('app/growth-board/ExtensionBridge.tsx', {
+    react: { useEffect: (effect) => effect() },
+    './model': model,
+    './storage': browser.store,
+  }, { window, location: { origin: 'https://board.example' }, localStorage: browser.localStorage });
+  bridge.default();
+  return {
+    responses,
+    send: async (command, payload = {}, overrides = {}) => {
+      await receive({ source: window, origin: 'https://board.example', data: {
+        channel: 'growth-board-extension-request', id: crypto.randomUUID(), command, payload,
+      }, ...overrides });
+      return responses.at(-1);
+    },
+  };
+}
+test('extension bridge ignores foreign origins and returns only narrow active skill data', async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill('Piano', undefined, 'Private description');
+  await b.store.addResource(skill.id, 'Personal resource', 'https://example.com/private');
+  const bridge = extensionBridge(b);
+  await bridge.send('snapshot', {}, { origin: 'https://attacker.example' });
+  await bridge.send('snapshot', {}, { source: {} });
+  assert.equal(bridge.responses.length, 0);
+  const response = await bridge.send('snapshot');
+  assert.equal(response.result.skills[0].name, 'Piano');
+  assert.equal(response.result.skills[0].description, undefined);
+  assert.equal(response.result.skills[0].resources, undefined);
+  assert.equal(response.result.sessions, undefined);
+});
+test('extension bridge reuses real timer persistence and acknowledges completion idempotently', async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill('Piano');
+  const bridge = extensionBridge(b);
+  const started = await bridge.send('start', { skillId: skill.id, minutes: 1, notes: 'Scales' });
+  const timerId = started.result.timer.id;
+  b.advance(60000);
+  const finished = await bridge.send('finish', { timerId });
+  assert.equal(finished.result.saved, true);
+  assert.equal(finished.result.timer, null);
+  assert.equal(b.read().sessions[0].durationSeconds, 60);
+  assert.equal(b.read().sessions[0].source, 'timer');
+  assert.equal((await bridge.send('finish', { timerId })).result.saved, true);
+  assert.equal(b.read().sessions.length, 1);
+});
+test('extension bridge rejects malformed mutations without modifying the app store', async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill('Piano');
+  const before = b.localStorage.getItem(b.store.STORAGE_KEY);
+  const bridge = extensionBridge(b);
+  assert.match((await bridge.send('start', { skillId: skill.id, minutes: '25', notes: '' })).error, /Invalid/);
+  assert.match((await bridge.send('finish', { timerId: 7 })).error, /Invalid/);
+  assert.match((await bridge.send('replaceAll', {})).error, /Unknown/);
+  assert.equal(b.localStorage.getItem(b.store.STORAGE_KEY), before);
+});

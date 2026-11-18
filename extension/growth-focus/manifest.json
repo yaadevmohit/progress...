@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Growth Focus \u2014 a little room to learn",
+  "version": "1.0.0",
+  "description": "An intentional new tab, Growth Board skill timers, and distraction blocking during focus sessions.",
+  "minimum_chrome_version": "120",
+  "incognito": "spanning",
+  "permissions": [
+    "storage",
+    "alarms",
+    "declarativeNetRequest",
+    "scripting",
+    "tabs"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "host_permissions": [
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "action": {
+    "default_title": "Open Growth Focus",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  },
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}

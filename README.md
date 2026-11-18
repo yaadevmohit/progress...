@@ -21,3 +21,14 @@ to check and build:
 npm run lint
 npm run build
 ```
+
+## Growth Focus extension
+
+A Momentum-inspired Chrome new-tab dashboard can start skill timers, record completed sessions in Growth Board, and block distractions during focus (including incognito when explicitly enabled). Load `extension/growth-focus` as an unpacked extension in Chrome, then connect your app address in its Settings.
+
+See [the installation and implementation guide](docs/growth-focus-extension.md) for setup, features, sync/recovery behavior, incognito limits, privacy, and the exact scope compared with Momentum.
+
+```sh
+npm run test:growth-focus
+npm run package:growth-focus
+```
