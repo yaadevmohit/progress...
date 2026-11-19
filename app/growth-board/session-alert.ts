@@ -1,11 +1,14 @@
 // Reuse the context unlocked by the Start timer click for the completion chime.
 let audio: AudioContext | null = null;
-export function playSessionAlert(kind: "start" | "finish") {
+export function unlockSessionAudio() {
+  try { audio ??= new AudioContext(); void audio.resume().catch(() => {}); } catch { /* Audio remains optional. */ }
+}
+export function playSessionAlert(kind: "start" | "break" | "resume" | "finish") {
   try {
     audio ??= new AudioContext();
     const context = audio;
     void context.resume().then(() => {
-      const notes = kind === "start" ? [523.25, 659.25] : [523.25, 659.25, 783.99];
+      const notes = { start: [523.25, 659.25], break: [659.25, 523.25, 392], resume: [392, 523.25, 659.25], finish: [523.25, 659.25, 783.99, 1046.5] }[kind];
       notes.forEach((frequency, index) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();

@@ -2,6 +2,9 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
   COLORS,
+  timerPhases,
+  validatePomodoro,
+  type PomodoroConfig,
   activeSkills,
   rootSkills,
   subtreeIds,
@@ -168,11 +171,14 @@ export async function startTimer(
   skillId: string,
   minutes: number,
   notes: string,
+  pomodoro?: PomodoroConfig,
+  soundOwner?: "extension",
 ) {
   return mutate((state) => {
     ensureSession(state, skillId, minutes, localDay(), notes);
     if (state.activeTimer)
       throw new Error("Finish or cancel the current timer first.");
+    if (pomodoro !== undefined) validatePomodoro(minutes, pomodoro);
     const startedAt = Date.now();
     const timer: ActiveTimer = {
       id: crypto.randomUUID(),
@@ -180,7 +186,9 @@ export async function startTimer(
       minutes,
       notes: notes.trim(),
       startedAt,
-      endsAt: startedAt + minutes * 60000,
+      endsAt: startedAt + (minutes + (pomodoro ? pomodoro.breaks * pomodoro.breakMinutes : 0)) * 60000,
+      ...(pomodoro ? { pomodoro } : {}),
+      ...(soundOwner ? { soundOwner } : {}),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
     return { state: { ...state, activeTimer: timer }, result: timer };
@@ -190,6 +198,7 @@ export async function finishTimer(timerId: string, early = false) {
   return mutate((state) => {
     const timer = state.activeTimer;
     if (!timer || timer.id !== timerId) return { state, result: null };
+    if (timer.pomodoro) return settlePomodoro(state, timer, Date.now(), early);
     const finishedAt = early
       ? Math.min(Date.now(), timer.endsAt)
       : timer.endsAt;
@@ -227,14 +236,29 @@ export async function finishTimer(timerId: string, early = false) {
     };
   });
 }
+// Persist every completed focus block at its own boundary. Deterministic IDs
+// make app/extension races and offline recovery safe, including deleted rows.
+function settlePomodoro(state: TrackerState, timer: ActiveTimer, now: number, stop = false) {
+  const ids = new Set([...state.sessions, ...(state.retainedPractice ?? [])].map((s) => s.id));
+  const added: LearningSession[] = [];
+  for (const phase of timerPhases(timer)) {
+    if (phase.kind !== "focus" || phase.endsAt > now || ids.has(phase.key)) continue;
+    added.push({ id: phase.key, skillId: timer.skillId, durationSeconds: phase.durationSeconds,
+      activityDate: localDay(new Date(phase.endsAt)), notes: timer.notes, source: "timer",
+      createdAt: new Date(phase.endsAt).toISOString(), timeZone: timer.timeZone });
+  }
+  const done = now >= timer.endsAt;
+  return { state: { ...state, sessions: [...added.reverse(), ...state.sessions],
+    activeTimer: done || stop ? null : timer },
+    result: done ? added[0] ?? null : null };
+}
 export async function cancelTimer(timerId: string) {
-  return mutate((state) => ({
-    state: {
-      ...state,
-      activeTimer: state.activeTimer?.id === timerId ? null : state.activeTimer,
-    },
-    result: null,
-  }));
+  return mutate((state) => {
+    const timer = state.activeTimer;
+    if (!timer || timer.id !== timerId) return { state, result: null };
+    if (timer.pomodoro) return settlePomodoro(state, timer, Date.now(), true);
+    return { state: { ...state, activeTimer: null }, result: null };
+  });
 }
 export async function dismissReminder() {
   return mutate((state) => ({

@@ -1,3 +1,6 @@
+import { validatePomodoro } from "../../extension/growth-focus/timer-plan.mjs";
+export { validatePomodoro, timerPhases, currentPhase } from "../../extension/growth-focus/timer-plan.mjs";
+export type PomodoroConfig = { breaks: number; breakMinutes: number };
 export const MAX_SKILLS = 6;
 export const MAX_MINUTES = 1440;
 export const REMINDER_INTERVAL = 48 * 60 * 60 * 1000;
@@ -59,6 +62,8 @@ export type PracticeEntry = Pick<
   "id" | "skillId" | "durationSeconds" | "activityDate"
 >;
 export type ActiveTimer = {
+  pomodoro?: PomodoroConfig;
+  soundOwner?: "extension";
   id: string;
   skillId: string;
   minutes: number;
@@ -422,12 +427,17 @@ export function decodeTracker(raw: string): {
         typeof timer.startedAt !== "number" ||
         !Number.isFinite(timer.startedAt) ||
         typeof timer.endsAt !== "number" ||
-        timer.endsAt !== timer.startedAt + timer.minutes * 60000 ||
+        timer.endsAt !== timer.startedAt + (timer.minutes + (object(timer.pomodoro) ? Number(timer.pomodoro.breaks) * Number(timer.pomodoro.breakMinutes) : 0)) * 60000 ||
         typeof timer.notes !== "string" ||
         timer.notes.length > 2000 ||
         typeof timer.timeZone !== "string"
       )
         throw Error();
+      if (timer.pomodoro !== undefined) {
+        if (!object(timer.pomodoro)) throw Error();
+        validatePomodoro(timer.minutes as number, timer.pomodoro as PomodoroConfig);
+      }
+      if (timer.soundOwner !== undefined && timer.soundOwner !== "extension") throw Error();
     }
     if (
       value.reminderDismissedAt !== null &&

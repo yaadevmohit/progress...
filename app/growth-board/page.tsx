@@ -15,6 +15,8 @@ import SkillResources from "./SkillResources";
 import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
+  currentPhase,
+  timerPhases,
   activeSkills,
   rootSkills,
   skillDistribution,
@@ -64,12 +66,10 @@ function Timer({
   onError: (message: string) => void;
   onFinish: (id: string, early?: boolean) => Promise<void>;
 }) {
-  const remaining = Math.min(
-      timer.minutes * 60,
-      Math.max(0, Math.ceil((timer.endsAt - now) / 1000)),
-    ),
+  const phase = currentPhase(timer, now ?? timer.startedAt);
+  const remaining = Math.max(0, Math.ceil(((phase?.endsAt ?? timer.endsAt) - (now ?? timer.startedAt)) / 1000)),
     elapsed = Math.max(0, Math.floor((now - timer.startedAt) / 1000));
-  const ratio = remaining / (timer.minutes * 60),
+  const ratio = remaining / (phase?.durationSeconds ?? timer.minutes * 60),
     [busy, setBusy] = useState(false);
   async function action(finish: boolean) {
     setBusy(true);
@@ -88,11 +88,12 @@ function Timer({
       aria-label="Focus timer"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="truncate text-sm font-bold">{name}</h2>
+        <h2 className="truncate text-sm font-bold">{name}{timer.pomodoro ? " · Pomodoro" : ""}</h2>
         <span className="text-xs font-semibold text-[var(--tracker-ink)]">
-          In focus
+          {phase?.kind === "break" ? "On a break" : "In focus"}
         </span>
       </div>
+      {timer.pomodoro && <p className="mt-2 text-center text-xs text-[var(--tracker-muted)]">{phase?.kind === "break" ? `Break ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks}` : `Focus block ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks + 1}`} · {timer.minutes} min focus total</p>}
       <div className="relative mx-auto my-1 grid h-36 w-36 place-items-center">
         <svg
           viewBox="0 0 160 160"
@@ -127,6 +128,7 @@ function Timer({
       </div>
       <div className="flex justify-center gap-4 text-xs">
         <button
+          hidden={!!timer.pomodoro}
           disabled={busy || elapsed < 60}
           onClick={() => void action(true)}
           className="font-bold text-[var(--tracker-ink)] disabled:opacity-35"
@@ -138,7 +140,7 @@ function Timer({
           onClick={() => void action(false)}
           className="text-[var(--tracker-muted)]"
         >
-          Cancel timer
+          {timer.pomodoro ? "End Pomodoro · keep completed blocks" : "Cancel timer"}
         </button>
       </div>
     </section>
@@ -183,13 +185,13 @@ export default function GrowthBoard() {
     async (id: string, early = false) => {
       const saved = await finishTimer(id, early);
       if (saved) {
-        setCompleted(saved);
+        setCompleted(timer?.pomodoro ? { ...saved, durationSeconds: timer.minutes * 60 } : saved);
         setNotice("");
         setError("");
-        playSessionAlert("finish");
+        if (timer?.soundOwner !== "extension") playSessionAlert("finish");
       }
     },
-    [setCompleted, setNotice, setError],
+    [setCompleted, setNotice, setError, timer],
   );
   useEffect(() => {
     const originalTitle = document.title;
@@ -200,8 +202,8 @@ export default function GrowthBoard() {
   useEffect(() => {
     if (timer && now !== null) {
       const seconds = Math.min(
-        timer.minutes * 60,
-        Math.max(0, Math.ceil((timer.endsAt - now) / 1000)),
+        currentPhase(timer, now)?.durationSeconds ?? timer.minutes * 60,
+        Math.max(0, Math.ceil(((currentPhase(timer, now)?.endsAt ?? timer.endsAt) - now) / 1000)),
       );
       const countdown = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
       document.title = `${countdown} · Growth Board`;
@@ -215,13 +217,23 @@ export default function GrowthBoard() {
     if (
       !timer ||
       !now ||
-      now < timer.endsAt ||
-      attemptedTimer.current === timer.id
+      now < (timer.pomodoro ? timerPhases(timer)[0].endsAt : timer.endsAt) ||
+      attemptedTimer.current === (currentPhase(timer, now)?.key ?? `${timer.id}:done`)
     )
       return;
-    attemptedTimer.current = timer.id;
+    attemptedTimer.current = currentPhase(timer, now)?.key ?? `${timer.id}:done`;
     void completeTimer(timer.id).catch((e) => setError((e as Error).message));
   }, [timer, now, completeTimer]);
+  const lastPhase = useRef<{ timerId: string; key: string } | null>(null);
+  useEffect(() => {
+    if (!timer || !now) { lastPhase.current = null; return; }
+    const phase = currentPhase(timer, now);
+    if (!phase) return;
+    if (lastPhase.current?.timerId === timer.id && lastPhase.current.key !== phase.key && timer.soundOwner !== "extension") {
+      playSessionAlert(phase.kind === "break" ? "break" : "resume");
+    }
+    lastPhase.current = { timerId: timer.id, key: phase.key };
+  }, [timer, now]);
   const reminder =
     ready &&
     now !== null &&
@@ -300,7 +312,7 @@ export default function GrowthBoard() {
                   Dismiss
                 </button>
               )}
-              {timer && now && now >= timer.endsAt && (
+              {timer && now && now >= (timer.pomodoro ? timerPhases(timer)[0].endsAt : timer.endsAt) && (
                 <button
                   className="ml-3 underline"
                   onClick={() => {
@@ -714,7 +726,7 @@ export default function GrowthBoard() {
                           {dateLabel(item.activityDate)},{" "}
                           {item.activityDate.slice(0, 4)} ·{" "}
                           {item.source === "timer"
-                            ? "Focus timer"
+                            ? item.id.includes(":focus:") ? `Pomodoro · block ${Number(item.id.split(":").at(-1)) + 1}` : "Focus timer"
                             : "Logged time"}
                         </p>
                       </div>
@@ -754,7 +766,7 @@ export default function GrowthBoard() {
             setNotice(
               `${name} timer started. You have ${minutes} ${minutes === 1 ? "minute" : "minutes"} to focus. You’ve got this!`,
             );
-            playSessionAlert("start");
+
           }}
           state={state}
           selected={session}

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Growth Focus \u2014 a little room to learn",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "An intentional new tab, Growth Board skill timers, and distraction blocking during focus sessions.",
   "minimum_chrome_version": "120",
   "incognito": "spanning",
@@ -10,7 +10,8 @@
     "alarms",
     "declarativeNetRequest",
     "scripting",
-    "tabs"
+    "tabs",
+    "offscreen"
   ],
   "optional_host_permissions": [
     "https://*/*",

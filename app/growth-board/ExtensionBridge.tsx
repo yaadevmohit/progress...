@@ -23,7 +23,7 @@ export default function ExtensionBridge() {
         if (command === "start") {
           if (typeof payload.skillId !== "string" || typeof payload.minutes !== "number" ||
               typeof payload.notes !== "string") throw new Error("Invalid timer request.");
-          await startTimer(payload.skillId, payload.minutes, payload.notes);
+          await startTimer(payload.skillId, payload.minutes, payload.notes, payload.pomodoro, "extension");
         } else if (command === "finish" || command === "cancel") {
           if (typeof payload.timerId !== "string") throw new Error("Invalid timer ID.");
           if (command === "finish") await finishTimer(payload.timerId);
@@ -37,8 +37,12 @@ export default function ExtensionBridge() {
           result: {
             skills: activeSkills(state.skills).map(({ id, name, parentId }) => ({ id, name, parentId })),
             timer: state.activeTimer,
+            creditedSeconds: [...state.sessions, ...(state.retainedPractice ?? [])].filter((s) => {
+              const timerId = payload.timerId ?? state.activeTimer?.id;
+              return typeof timerId === "string" && (s.id === timerId || s.id.startsWith(`${timerId}:focus:`));
+            }).reduce((sum, s) => sum + s.durationSeconds, 0),
             saved: typeof payload.timerId === "string" &&
-              [...state.sessions, ...(state.retainedPractice ?? [])].some((s) => s.id === payload.timerId),
+              [...state.sessions, ...(state.retainedPractice ?? [])].some((s) => s.id === payload.timerId || (state.activeTimer?.id !== payload.timerId && s.id.startsWith(`${payload.timerId}:focus:`))),
           },
         }, location.origin);
       } catch (error) {

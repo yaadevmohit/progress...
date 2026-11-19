@@ -8,7 +8,7 @@ Growth Focus is an original, Momentum-inspired new-tab dashboard connected to th
 2. In Chrome, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `extension/growth-focus` in this repository. Accept Chrome’s new-tab replacement if prompted. Another new-tab extension may need to be disabled.
 3. Open a new tab, select **Settings**, enter the app address, and choose **Connect Growth Board**. Accept the permission prompt for that specific app origin. Production addresses must use HTTPS; HTTP is permitted only on localhost and 127.0.0.1.
 4. Choose a skill or subskill, duration (1–1,440 whole minutes), and optional session intention. Select **Start focus session**. The extension opens an inactive Growth Board tab if needed; keep the local dev server running if you use localhost.
-5. Completed sessions appear in Growth Board’s Recent sessions, activity, skill totals and streaks. They are ordinary `source: "timer"` sessions. A five-minute break countdown appears after confirmation. Start the next session yourself; it does not run sessions unattended.
+5. Completed sessions appear in Growth Board’s Recent sessions, activity, skill totals and streaks. They are ordinary `source: "timer"` sessions. For the simple timer, a five-minute break countdown appears after confirmation, and the next session starts manually. Pomodoro runs alternate focus and configured breaks automatically as described below.
 6. For private-window blocking, open the extension’s **Details** in `chrome://extensions` and enable **Allow in Incognito**. Settings shows whether Chrome has enabled that access. Start the timer from a regular new tab or the toolbar button.
 
 To use this as the Home button’s destination as well, configure Chrome **Settings → Appearance → Show Home button → New Tab page**. For launch, choose **On startup → Open the New Tab page**. The extension replaces normal new tabs; it intentionally does not silently change a configured homepage or startup tabs.
@@ -29,7 +29,7 @@ To distribute a ZIP locally, run `npm run package:growth-focus`. Extract `build/
 - Three local synthesized ambient sound textures. Sound is opt-in, stops when the tab closes, and plays per tab.
 - Responsive layout, keyboard-accessible controls, visible focus outlines, reduced-motion support and status messages.
 
-This is not a complete reproduction of Momentum or Momentum Plus. Its brand, proprietary photos and quotes are not copied. Calendar account integration, third-party task-manager integration, AI chat, cross-device accounts, a curated photographic feed, photo favorites, advanced air quality/hourly weather and automatic multi-round Pomodoro schedules are not implemented. Those require additional implementation and, for connected services, separate authorization. The local illustrated backgrounds and uploaded photo are distinct from a licensed daily-photo service.
+This is not a complete reproduction of Momentum or Momentum Plus. Its brand, proprietary photos and quotes are not copied. Calendar account integration, third-party task-manager integration, AI chat, cross-device accounts, a curated photographic feed, photo favorites, and advanced air quality/hourly weather are not implemented. Those require additional implementation and, for connected services, separate authorization. The local illustrated backgrounds and uploaded photo are distinct from a licensed daily-photo service.
 
 ## How the connection works
 
@@ -56,7 +56,7 @@ The app remains the authority for skill validation, overlap prevention and recor
 5. `finishTimer` already checks both sessions and retained practice credits before adding that ID. If the app’s own timer UI finished first, the bridge acknowledges the existing record. Retry does not duplicate practice or resurrect a deleted session row.
 6. If the app/server cannot be reached, the expired timer remains persisted as a pending completion. Blocking ends, and the worker retries on subsequent checks and manual sync. The UI says that saving is pending; it never claims success before acknowledgement.
 7. The worker serializes its commands to avoid two new tabs starting overlapping sessions. Each app mutation is separately protected by the app’s Web Lock.
-8. Cancel removes the app timer without adding time. Cancel requires reaching the board; an unavailable board may prevent immediate cancellation, but network rules still expire at the original deadline. If the app cancelled or removed the timer, reconciliation does not manufacture a replacement session.
+8. For a simple timer, Cancel removes the app timer without adding time. Pomodoro cancellation retains completed focus blocks as described below. Cancel requires reaching the board; an unavailable board may prevent immediate cancellation, but network rules still expire at the original deadline. If the app cancelled or removed the timer, reconciliation does not manufacture a replacement session.
 
 The browser must be running for alarms to execute. Chrome can delay alarms while suspended or busy. Rules may remain briefly after the nominal deadline until Chrome wakes the worker. On resume, elapsed sessions are finalized against their original deadline. These are focus-session timings, not a measurement of whether the user was physically practising while the computer slept.
 
@@ -82,6 +82,7 @@ Network rules execute inside Chrome even while the service worker is suspended. 
 | Permission | Purpose |
 | --- | --- |
 | `storage` | Persist dashboard, connected origin, active/pending timer and preferences locally. |
+| `offscreen` | Play bundled transition chimes from a hidden audio document, including when dashboard tabs are closed. |
 | `alarms` | Completion deadlines and retry checks while dashboard tabs are closed. |
 | `declarativeNetRequest` | Apply focus-only domain blocking through Chrome’s network engine. |
 | `scripting` | Inject the narrow bridge into the explicitly connected app origin. |
@@ -114,3 +115,25 @@ References: [Chrome new-tab overrides](https://developer.chrome.com/docs/extensi
 - The production manifest loaded in an isolated Brave/Chromium 157 profile with no install warnings, manifest errors or runtime errors. Its real desktop and narrow layouts were inspected.
 - A separate disposable integration copy pre-granted **only localhost** as a required host permission to bypass the native permission prompt in headless mode. The shipped manifest retains optional app access. With the updated local app, the real extension loaded a Piano skill, started a one-minute timer, installed network rules, blocked an actual YouTube navigation in both normal and permitted private browser contexts, and recorded exactly one 60-second timer session in Growth Board. The UI then showed a confirmed save and the break countdown. A real to-do submission also persisted successfully.
 - Full interactive Chrome installation/permission-prompt acceptance, external HTTPS deployment, weather network availability and the full list of browser-specific offline/cache cases remain manual release checks. No Chrome Web Store publication or production app deployment was performed.
+
+
+## Pomodoro timer (v1.1)
+
+Both the app’s Log session dialog and the extension’s timer form now offer **Focus timer** and **Pomodoro**. Pomodoro accepts total focus minutes, number of breaks (1–24, with at least one focus minute per block), and break duration (1–60 minutes). The existing uninterrupted timer still behaves as before.
+
+A run has `breaks + 1` focus blocks with a break between blocks, never an extra break after the final block. For 60 focus minutes, three breaks, and five-minute breaks, the timeline is:
+
+`focus 15 → break 5 → focus 15 → break 5 → focus 15 → break 5 → focus 15`
+
+Elapsed time is 75 minutes; credited practice is exactly 60 minutes. If the division is uneven, integer seconds are distributed across focus blocks so that the sum remains exact.
+
+Each focus block becomes an independent timer session as its break begins; the final block saves at completion. The board’s existing session totals, skill totals, activity and streak calculations include these records normally. IDs use the run ID and focus-block index. Concurrent app/extension writes, reconnects and deleted-session retained credits therefore cannot duplicate a block.
+
+**End Pomodoro** keeps completed blocks and drops unfinished focus. Ending in the second break of the example retains two 15-minute records (30 minutes). Ending during a later focus block still preserves those earlier records. Breaks are never recorded as practice. Cancellation itself settles any focus boundary crossed immediately before the click, preventing a race from discarding a just-completed block.
+
+The shared `timer-plan.mjs` supplies the app and extension with identical phase calculations. The app settles completed phases at clock transitions; the worker schedules its next alarm for the next focus/break boundary rather than the run’s final deadline. Absolute timestamps preserve the schedule across refresh/restart. If the board is unavailable, the extension retains its timer and retries saving, including any completed blocks, when the origin can be reached. While suspended, Chrome can delay alarms and chimes; resuming catches up completed focus blocks without adding break time. Distraction blocking stays active through the scheduled breaks until the run ends or is cancelled.
+
+Distinct sounds mark **start**, **break**, **resume**, and **final completion**. The app synthesizes its chimes using the audio context unlocked by the Start click. Extension-started sessions use bundled local WAV files and a Chrome offscreen audio document, so sounds do not depend on keeping the new-tab dashboard open. Persistent phase keys prevent repeated syncs or multiple dashboards from replaying the same transition. The app suppresses duplicate chimes for extension-owned timers. Browser/system audio settings can mute playback; failures never prevent saving a session.
+
+
+Pomodoro validation: 39 app/storage/bridge tests and 17 extension tests passed (56 total). An accelerated disposable Chromium test advanced only the test app/worker JavaScript clocks across the 60 + 3 × 5 schedule with the dashboard closed. It verified one saved block at every break boundary, four records summing to 3,600 seconds, offscreen audio playback acknowledgements for start/break/resume/finish, and removal of blocking rules at the final deadline. No production/user data or system clock was changed.

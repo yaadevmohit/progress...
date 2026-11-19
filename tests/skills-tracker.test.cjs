@@ -37,7 +37,8 @@ function load(file, dependencies = {}, globals = {}) {
   );
   return exports;
 }
-const model = load("app/growth-board/model.ts");
+const timerPlan = load("extension/growth-focus/timer-plan.mjs");
+const model = load("app/growth-board/model.ts", { "../../extension/growth-focus/timer-plan.mjs": timerPlan });
 const session = (day, skillId = "a", seconds = 1500) => ({
   id: crypto.randomUUID(),
   skillId,
@@ -942,4 +943,53 @@ test('extension bridge rejects malformed mutations without modifying the app sto
   assert.match((await bridge.send('finish', { timerId: 7 })).error, /Invalid/);
   assert.match((await bridge.send('replaceAll', {})).error, /Unknown/);
   assert.equal(b.localStorage.getItem(b.store.STORAGE_KEY), before);
+});
+
+test('Pomodoro persists each block at break start, survives repeated saves and preserves completed work on quit', async () => {
+  const b = browserStore(); const skill = await b.store.addSkill('Piano');
+  const timer = await b.store.startTimer(skill.id, 60, 'Scales', { breaks: 3, breakMinutes: 5 });
+  assert.equal(timer.endsAt - timer.startedAt, 75 * 60000);
+  b.advance(15 * 60000); await b.store.finishTimer(timer.id);
+  assert.equal(b.read().sessions.length, 1);
+  assert.equal(b.read().sessions[0].durationSeconds, 900);
+  assert.equal(b.read().activeTimer.id, timer.id);
+  await b.store.finishTimer(timer.id); assert.equal(b.read().sessions.length, 1);
+  b.advance(20 * 60000); await b.store.cancelTimer(timer.id);
+  assert.equal(b.read().sessions.length, 2);
+  assert.equal(b.read().sessions.reduce((n,s) => n+s.durationSeconds, 0), 1800);
+  assert.equal(b.read().activeTimer, null);
+});
+test('Pomodoro recovery credits exactly 60 focus minutes after 75 elapsed, even when a saved block was deleted', async () => {
+  const b = browserStore(); const skill = await b.store.addSkill('Piano');
+  const timer = await b.store.startTimer(skill.id, 60, '', { breaks: 3, breakMinutes: 5 });
+  b.advance(15 * 60000); await b.store.finishTimer(timer.id);
+  await b.store.deleteSession(b.read().sessions[0].id);
+  b.advance(60 * 60000); await b.store.finishTimer(timer.id); await b.store.finishTimer(timer.id);
+  assert.equal(b.read().sessions.length, 3);
+  assert.equal(model.practiceHistory(b.read()).reduce((n,s) => n+s.durationSeconds, 0), 3600);
+  assert.equal(b.read().activeTimer, null);
+});
+test('Pomodoro quit discards an unfinished block and rejects corrupt persisted plans without overwriting', async () => {
+  const b = browserStore(); const skill = await b.store.addSkill('Piano');
+  await assert.rejects(b.store.startTimer(skill.id, 2, '', { breaks: 3, breakMinutes: 5 }));
+  const timer = await b.store.startTimer(skill.id, 7, '', { breaks: 2, breakMinutes: 1 });
+  assert.equal(model.timerPhases(timer).filter((p) => p.kind === 'focus').reduce((n,p) => n+p.durationSeconds,0), 420);
+  b.advance(60000); await b.store.cancelTimer(timer.id); assert.equal(b.read().sessions.length, 0);
+  await b.store.startTimer(skill.id, 60, '', { breaks: 3, breakMinutes: 5 });
+  const corrupt = b.read(); corrupt.activeTimer.pomodoro.breaks = -1;
+  assert.ok(model.decodeTracker(JSON.stringify(corrupt)).error);
+});
+test('extension bridge acknowledges Pomodoro block credits and final run completion', async () => {
+  const b = browserStore(); const skill = await b.store.addSkill('Piano'); const bridge = extensionBridge(b);
+  const start = await bridge.send('start', { skillId: skill.id, minutes: 60, notes: '', pomodoro: { breaks: 3, breakMinutes: 5 } });
+  const timerId = start.result.timer.id;
+  assert.equal(start.result.timer.soundOwner, 'extension');
+  b.advance(15 * 60000); const firstBreak = await bridge.send('finish', { timerId });
+  assert.equal(firstBreak.result.creditedSeconds, 900); assert.equal(firstBreak.result.saved, false);
+  assert.equal(firstBreak.result.timer.id, timerId);
+  b.advance(60 * 60000); const completed = await bridge.send('finish', { timerId });
+  assert.equal(completed.result.timer, null); assert.equal(completed.result.saved, true);
+  assert.equal(completed.result.creditedSeconds, 3600);
+  assert.equal((await bridge.send('finish', { timerId })).result.creditedSeconds, 3600);
+  assert.equal(b.read().sessions.length, 4);
 });

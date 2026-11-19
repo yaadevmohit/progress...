@@ -1,4 +1,4 @@
-import { appAddress, remaining } from './core.mjs';
+import { appAddress, currentPhase, timerPhases, validatePomodoro } from './core.mjs';
 const $ = (id) => document.getElementById(id);
 let dashboard = {}, focus = {}, toastTimeout;
 function toast(text) {
@@ -43,9 +43,12 @@ function tick() {
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
   $('greeting').textContent = `${greeting}${dashboard.name ? `, ${dashboard.name}` : ''}. Make room to grow.`;
   if (focus.timer) {
-    const seconds = remaining(focus.timer);
+    const phase = currentPhase(focus.timer);
+    const seconds = Math.max(0, Math.ceil(((phase?.endsAt ?? focus.timer.endsAt) - Date.now()) / 1000));
     $('countdown').textContent = duration(seconds);
-    $('timer-caption').textContent = seconds ? 'Your time is protected. One thing at a time.' : 'Session finished. Waiting for Growth Board to confirm the save…';
+    $('timer-caption').textContent = seconds ? (phase?.kind === 'break' ? 'Take a break. Your completed focus block is being saved; distractions stay blocked.' : 'Your time is protected. One thing at a time.') : 'Session finished. Waiting for Growth Board to confirm the save…';
+    $('pomodoro-progress').textContent = focus.timer.pomodoro ? `${phase?.kind === 'break' ? 'Break' : 'Focus block'} ${(phase?.index ?? focus.timer.pomodoro.breaks) + 1} / ${phase?.kind === 'break' ? focus.timer.pomodoro.breaks : focus.timer.pomodoro.breaks + 1} · ${duration(focus.creditedSeconds ?? 0)} focus saved / ${focus.timer.minutes} min planned` : '';
+    $('cancel').textContent = focus.timer.pomodoro ? 'End Pomodoro · keep completed blocks' : 'Cancel without saving';
     $('cancel').hidden = !seconds;
   }
   $('break-status').textContent = focus.breakEndsAt > Date.now() && !focus.timer ? `Take a breath. Break: ${duration(Math.ceil((focus.breakEndsAt - Date.now()) / 1000))}` : '';
@@ -73,6 +76,7 @@ function renderFocus() {
   $('sync-status').textContent = focus.syncError ? `Sync needs attention: ${focus.syncError} Completed time will retry automatically.`
     : focus.settings?.appUrl ? 'Connected · Sessions save to this browser’s Growth Board.' : 'Connect Growth Board in Settings to load your skills.';
   $('session-result').textContent = focus.lastResult ?? '';
+  $('sound-status').textContent = focus.soundError ?? '';
   $('incognito-status').textContent = focus.incognitoAllowed ? '✓ Incognito protection is enabled.' : '○ Incognito protection is not enabled.';
   const groups = focus.settings?.categories ?? ['social', 'entertainment', 'adult'];
   $('protection').textContent = `◇ Focus protection: ${groups.length ? groups.join(', ') : 'custom list only'}${focus.settings?.customDomains?.length ? ` + ${focus.settings.customDomains.length} custom domains` : ''}`;
@@ -147,12 +151,31 @@ action('connect-form', 'submit', async () => {
   toast('Growth Board connected. Your skills are ready.');
 });
 action('sync', 'click', async () => { await request('sync'); renderDashboard(); if (focus.syncError) throw new Error(focus.syncError); toast('Board synced.'); });
+function renderPomodoroPlan() {
+  const pomodoro = $('timer-mode').value === 'pomodoro';
+  $('pomodoro-fields').hidden = !pomodoro;
+  $('minutes-label').textContent = pomodoro ? 'TOTAL FOCUS MINUTES' : 'MINUTES';
+  $('breaks').required = pomodoro;
+  $('break-minutes').required = pomodoro;
+  $('breaks').disabled = !pomodoro;
+  $('break-minutes').disabled = !pomodoro;
+  const minutes = Number($('minutes').value), breaks = Number($('breaks').value), breakMinutes = Number($('break-minutes').value);
+  try {
+    validatePomodoro(minutes, { breaks, breakMinutes });
+    const blocks = timerPhases({ id: 'preview', minutes, startedAt: 0, endsAt: (minutes + breaks * breakMinutes) * 60000, pomodoro: { breaks, breakMinutes } }).filter((p) => p.kind === 'focus');
+    $('pomodoro-summary').textContent = `${minutes} min focus + ${breaks * breakMinutes} min breaks = ${minutes + breaks * breakMinutes} min elapsed. ${blocks.length} focus blocks (${blocks.map((b) => duration(b.durationSeconds)).join(' / ')}), saved individually. Break time never counts.`;
+  } catch (error) { $('pomodoro-summary').textContent = error.message; }
+}
+for (const id of ['timer-mode', 'minutes', 'breaks', 'break-minutes']) $(id).addEventListener('input', renderPomodoroPlan);
+renderPomodoroPlan();
 action('timer-form', 'submit', async () => {
-  await request('start', { skillId: $('skill').value, minutes: Number($('minutes').value), notes: $('session-notes').value });
+  const pomodoro = $('timer-mode').value === 'pomodoro' ? { breaks: Number($('breaks').value), breakMinutes: Number($('break-minutes').value) } : undefined;
+  if (pomodoro) validatePomodoro(Number($('minutes').value), pomodoro);
+  await request('start', { skillId: $('skill').value, minutes: Number($('minutes').value), notes: $('session-notes').value, pomodoro });
   toast('Your focus session has started. Distractions are blocked.');
 });
 action('cancel', 'click', async () => {
-  if (confirm('Cancel this session? No practice time will be saved.')) await request('cancel');
+  if (confirm(focus.timer?.pomodoro ? 'End this Pomodoro? Completed focus blocks stay saved. Breaks and unfinished focus are not credited.' : 'Cancel this session? No practice time will be saved.')) await request('cancel');
 });
 action('block-form', 'submit', async () => {
   await request('settings', { categories: [...document.querySelectorAll('[name=category]:checked')].map((el) => el.value),

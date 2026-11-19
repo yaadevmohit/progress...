@@ -1,4 +1,4 @@
-import { appAddress, blockedDomains, blockingRules, matchesDomain } from './core.mjs';
+import { appAddress, blockedDomains, blockingRules, matchesDomain, currentPhase, validatePomodoro } from './core.mjs';
 
 let queue = Promise.resolve();
 const serial = (work) => {
@@ -8,6 +8,20 @@ const serial = (work) => {
 };
 const read = async () => (await chrome.storage.local.get('focus')).focus ?? { settings: {}, skills: [], timer: null };
 const write = (focus) => chrome.storage.local.set({ focus });
+
+async function announce(focus, kind, key) {
+  if (focus.alertKey === key) return;
+  focus.alertKey = key;
+  await write(focus); // Multiple tabs and alarm retries must not replay a chime.
+  try {
+    const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+    if (!contexts.length) await chrome.offscreen.createDocument({ url: 'offscreen.html', reasons: ['AUDIO_PLAYBACK'],
+      justification: 'Play focus start, break, resume, and completion sounds while dashboard tabs are closed.' });
+    const response = await chrome.runtime.sendMessage({ type: 'play-alert', kind });
+    focus.soundError = response?.error ?? '';
+  } catch { focus.soundError = 'Sound could not play. Timer and session saving are still active.'; }
+  await write(focus);
+}
 
 async function board(focus, command = 'snapshot', payload = {}) {
   if (!focus.settings.appUrl) throw new Error('Connect your Growth Board address in Settings first.');
@@ -46,7 +60,7 @@ async function enforce(focus, reload = false) {
   await chrome.action.setBadgeText({ text: focus.timer?.endsAt > Date.now() ? 'ON' : '' });
   await chrome.action.setBadgeBackgroundColor({ color: '#53735d' });
   if (focus.timer?.endsAt > Date.now()) {
-    await chrome.alarms.create('focus-end', { when: focus.timer.endsAt });
+    await chrome.alarms.create('focus-end', { when: currentPhase(focus.timer, Date.now())?.endsAt ?? focus.timer.endsAt });
     if (reload) {
       const domains = blockedDomains(focus.settings);
       const appHost = new URL(focus.settings.appUrl).hostname;
@@ -62,18 +76,23 @@ async function enforce(focus, reload = false) {
   } else await chrome.alarms.clear('focus-end');
 }
 async function reconcile(focus) {
-  const previousId = focus.timer?.id;
+  const previousTimer = focus.timer;
+  const previousId = previousTimer?.id;
+  const previousPhaseKey = focus.phaseKey;
   // Drop network rules at the deadline even when the app is unavailable.
   await enforce(focus);
   try {
     let snapshot;
-    if (focus.timer && focus.timer.endsAt <= Date.now()) {
+    if (focus.timer && (focus.timer.pomodoro || focus.timer.endsAt <= Date.now())) {
       snapshot = await board(focus, 'finish', { timerId: focus.timer.id });
-      focus.lastResult = snapshot.saved ? 'Session saved in Growth Board. Time for a break.'
-        : 'The timer was cancelled or removed in Growth Board; no session was added.';
-      focus.breakEndsAt = snapshot.saved ? Date.now() + 5 * 60000 : null;
+      if (!snapshot.timer || snapshot.timer.id !== focus.timer.id) {
+        focus.lastResult = snapshot.saved ? 'Session saved in Growth Board. Well done.'
+          : focus.timer.pomodoro ? 'Pomodoro cancelled or ended. Previously completed focus blocks remain saved.' : 'The timer was cancelled or removed in Growth Board; no session was added.';
+        focus.breakEndsAt = snapshot.saved && !focus.timer.pomodoro ? Date.now() + 5 * 60000 : null;
+      }
     } else snapshot = await board(focus);
     focus.skills = snapshot.skills;
+    focus.creditedSeconds = snapshot.creditedSeconds ?? 0;
     focus.timer = snapshot.timer;
     focus.syncError = '';
     focus.lastSyncedAt = Date.now();
@@ -81,14 +100,22 @@ async function reconcile(focus) {
     focus.syncError = error.message;
     // Retain the expired timer as an outbox item until the board acknowledges it.
   }
+  const phase = focus.timer ? currentPhase(focus.timer, Date.now()) : null;
+  focus.phaseKey = phase?.key ?? (previousTimer ? `${previousTimer.id}:done` : null);
   await write(focus);
+  if (previousTimer?.soundOwner === 'extension' && previousPhaseKey && previousPhaseKey !== focus.phaseKey) {
+    const finished = Date.now() >= previousTimer.endsAt;
+    if (phase && previousId === focus.timer?.id) await announce(focus, phase.kind === 'break' ? 'break' : 'resume', phase.key);
+    else if (finished) await announce(focus, 'finish', `${previousTimer.id}:done`);
+  }
   await enforce(focus, previousId !== focus.timer?.id);
   return focus;
 }
 async function handle(message) {
   let focus = await read();
   if (message.type === 'get') {
-    await enforce(focus);
+    if (focus.timer && focus.phaseKey !== (currentPhase(focus.timer, Date.now())?.key ?? `${focus.timer.id}:done`)) focus = await reconcile(focus);
+    else await enforce(focus);
   } else if (message.type === 'connect') {
     if (focus.timer) throw new Error('Finish and sync the current session before changing app address.');
     const appUrl = appAddress(message.appUrl);
@@ -103,21 +130,28 @@ async function handle(message) {
     focus = await reconcile(focus);
     if (focus.syncError) throw new Error(focus.syncError);
     if (focus.timer) throw new Error('Finish or cancel your current timer first.');
+    if (message.pomodoro !== undefined) validatePomodoro(message.minutes, message.pomodoro);
     const snapshot = await board(focus, 'start', {
-      skillId: message.skillId, minutes: message.minutes, notes: message.notes,
+      skillId: message.skillId, minutes: message.minutes, notes: message.notes, pomodoro: message.pomodoro,
     });
     focus.timer = snapshot.timer;
     focus.skills = snapshot.skills;
     focus.lastResult = '';
+    focus.creditedSeconds = 0;
     focus.breakEndsAt = null;
     await write(focus); // Persist deadline before installing rules or alarms.
+    focus.phaseKey = currentPhase(focus.timer, Date.now())?.key;
+    await write(focus);
     await enforce(focus, true);
+    await announce(focus, 'start', focus.phaseKey);
   } else if (message.type === 'cancel') {
     if (focus.timer) {
       if (focus.timer.endsAt <= Date.now()) return reconcile(focus);
       const snapshot = await board(focus, 'cancel', { timerId: focus.timer.id });
+      const wasPomodoro = !!focus.timer.pomodoro;
       focus.timer = snapshot.timer;
-      focus.lastResult = 'Session cancelled. No practice time was recorded.';
+      focus.creditedSeconds = snapshot.creditedSeconds ?? 0;
+      focus.lastResult = wasPomodoro ? 'Pomodoro ended. Completed focus blocks are saved; breaks and unfinished focus are excluded.' : 'Session cancelled. No practice time was recorded.';
       await write(focus);
       await enforce(focus);
     }

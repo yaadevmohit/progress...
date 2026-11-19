@@ -1,3 +1,4 @@
+export { currentPhase, timerPhases, validatePomodoro } from "./timer-plan.mjs";
 export const GROUPS = {
   social: ['facebook.com', 'instagram.com', 'threads.net', 'threads.com', 'twitter.com', 'x.com', 'tiktok.com', 'reddit.com', 'snapchat.com', 'pinterest.com', 'tumblr.com', 'discord.com', 'bsky.app'],
   entertainment: ['youtube.com', 'youtu.be', 'youtube-nocookie.com', 'twitch.tv', 'netflix.com', 'hulu.com', 'disneyplus.com', 'primevideo.com', 'max.com', 'hbomax.com', 'dailymotion.com', '9gag.com', '9anime.to', 'crunchyroll.com', 'kick.com'],

@@ -9,7 +9,7 @@ const corePromise = import(pathToFileURL(`${process.cwd()}/extension/growth-focu
 async function harness() {
   const core = await corePromise;
   let now = 1800000000000, persisted, rules = [], offline = false, saved = [], timer = null, id = 0;
-  const callbacks = {}, reloads = [], calls = [];
+  const callbacks = {}, reloads = [], calls = [], sounds = [], credits = new Map(), alarms = new Map();
   const skills = [{ id: 'skill-a', name: 'Piano' }];
   const chrome = {
     storage: { local: { get: async () => ({ focus: structuredClone(persisted) }), set: async ({ focus }) => { persisted = structuredClone(focus); } } },
@@ -28,21 +28,26 @@ async function harness() {
         if (message.command === 'start') {
           if (timer) return { error: 'Timer already active' };
           if (!Number.isInteger(p.minutes) || p.minutes < 1 || p.minutes > 1440 || p.skillId !== 'skill-a') return { error: 'Invalid session' };
-          timer = { id: `timer-${++id}`, skillId: p.skillId, minutes: p.minutes, notes: p.notes, startedAt: now, endsAt: now + p.minutes * 60000, timeZone: 'UTC' };
+          timer = { id: `timer-${++id}`, skillId: p.skillId, minutes: p.minutes, notes: p.notes, startedAt: now, endsAt: now + (p.minutes + (p.pomodoro ? p.pomodoro.breaks * p.pomodoro.breakMinutes : 0)) * 60000, timeZone: 'UTC', pomodoro: p.pomodoro, soundOwner: 'extension' };
+        }
+        if (['finish', 'cancel'].includes(message.command) && timer?.id === p.timerId && timer.pomodoro) {
+          for (const phase of core.timerPhases(timer)) if (phase.kind === 'focus' && phase.endsAt <= now && !saved.includes(phase.key)) { saved.push(phase.key); credits.set(phase.key, phase.durationSeconds); }
+          if (message.command === 'cancel' || now >= timer.endsAt) timer = null;
         }
         if (message.command === 'finish' && timer?.id === p.timerId && now >= timer.endsAt) {
           if (!saved.includes(timer.id)) saved.push(timer.id);
           timer = null;
         }
         if (message.command === 'cancel' && timer?.id === p.timerId) timer = null;
-        return { result: { skills, timer: structuredClone(timer), saved: saved.includes(p.timerId) } };
+        return { result: { skills, timer: structuredClone(timer), creditedSeconds: [...credits.values()].reduce((a,b) => a+b,0), saved: saved.includes(p.timerId) || (!timer && saved.some((id) => id.startsWith(`${p.timerId}:focus:`))) } };
       },
     },
     declarativeNetRequest: { getSessionRules: async () => rules, updateSessionRules: async ({ addRules }) => { rules = addRules; } },
     action: { setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {}, onClicked: { addListener: () => {} } },
-    alarms: { create: async () => {}, clear: async () => {}, onAlarm: { addListener: (cb) => { callbacks.alarm = cb; } } },
+    offscreen: { createDocument: async () => {} },
+    alarms: { create: async (key, value) => { alarms.set(key, value); }, clear: async (key) => { alarms.delete(key); }, onAlarm: { addListener: (cb) => { callbacks.alarm = cb; } } },
     extension: { isAllowedIncognitoAccess: (cb) => cb(true) },
-    runtime: { id: 'test-extension', getURL: (path) => `chrome-extension://test-extension/${path}`,
+    runtime: { getContexts: async () => [{}], sendMessage: async (message) => { sounds.push(message.kind); return { played: true }; }, id: 'test-extension', getURL: (path) => `chrome-extension://test-extension/${path}`,
       onMessage: { addListener: (cb) => { callbacks.message = cb; } },
       onStartup: { addListener: (cb) => { callbacks.startup = cb; } }, onInstalled: { addListener: () => {} } },
   };
@@ -53,7 +58,7 @@ async function harness() {
   vm.runInContext(`${source}\nglobalThis.worker = { handle, wake };`, context);
   const handle = (type, payload = {}) => context.worker.handle({ type, ...payload });
   return { handle, callbacks, chrome, calls, reloads, wake: () => context.worker.wake(),
-    read: () => persisted, rules: () => rules, saved: () => saved,
+    sounds, alarms, credits, read: () => persisted, rules: () => rules, saved: () => saved,
     advance: (ms) => { now += ms; }, offline: (value) => { offline = value; },
     appCancel: () => { timer = null; },
     connect: () => handle('connect', { appUrl: 'https://board.example' }),
@@ -144,4 +149,58 @@ test('extension manifest declares a local-only MV3 new-tab and shared incognito 
   assert.equal(m.chrome_url_overrides.newtab, 'newtab.html');
   assert.ok(!m.host_permissions.includes('<all_urls>'));
   for (const file of ['newtab.html', 'newtab.js', 'newtab.css', 'background.js', 'content.js', 'core.mjs']) assert.ok(fs.existsSync(`extension/growth-focus/${file}`));
+});
+
+test('Pomodoro plan has four equal focus blocks and three breaks for 60 + 3 × 5', async () => {
+  const { timerPhases, currentPhase, validatePomodoro } = await corePromise;
+  validatePomodoro(60, { breaks: 3, breakMinutes: 5 });
+  const timer = { id: 'p', minutes: 60, startedAt: 0, endsAt: 75 * 60000, pomodoro: { breaks: 3, breakMinutes: 5 } };
+  const phases = timerPhases(timer);
+  assert.deepEqual(phases.map((p) => p.durationSeconds), [900, 300, 900, 300, 900, 300, 900]);
+  assert.equal(currentPhase(timer, 15 * 60000).kind, 'break');
+  assert.equal(currentPhase(timer, 20 * 60000).kind, 'focus');
+  assert.equal(currentPhase(timer, 75 * 60000), null);
+});
+test('Pomodoro worker saves at break boundaries, retains two blocks when quit, and sounds once per transition', async () => {
+  const h = await harness(); await h.connect();
+  await h.handle('start', { skillId: 'skill-a', minutes: 60, notes: 'Scales', pomodoro: { breaks: 3, breakMinutes: 5 } });
+  assert.equal(h.read().timer.endsAt - h.read().timer.startedAt, 75 * 60000);
+  assert.equal(h.alarms.get('focus-end').when, h.read().timer.startedAt + 15 * 60000);
+  h.advance(15 * 60000); await h.wake(); await h.wake();
+  assert.deepEqual(h.saved(), ['timer-1:focus:0']);
+  assert.equal(h.read().creditedSeconds, 900);
+  h.advance(5 * 60000); await h.wake();
+  h.advance(15 * 60000); await h.wake();
+  assert.deepEqual(h.saved(), ['timer-1:focus:0', 'timer-1:focus:1']);
+  assert.deepEqual(h.sounds, ['start', 'break', 'resume', 'break']);
+  await h.handle('cancel');
+  assert.equal(h.read().timer, null);
+  assert.equal([...h.credits.values()].reduce((a,b) => a+b,0), 1800);
+  assert.equal(h.rules().length, 0);
+});
+test('full Pomodoro saves only focus seconds and emits final completion instead of an extra break', async () => {
+  const h = await harness(); await h.connect();
+  await h.handle('start', { skillId: 'skill-a', minutes: 60, notes: '', pomodoro: { breaks: 3, breakMinutes: 5 } });
+  for (const minutes of [15, 5, 15, 5, 15, 5, 15]) { h.advance(minutes * 60000); await h.wake(); }
+  await h.wake();
+  assert.equal(h.saved().length, 4);
+  assert.equal([...h.credits.values()].reduce((a,b) => a+b,0), 3600);
+  assert.deepEqual(h.sounds, ['start', 'break', 'resume', 'break', 'resume', 'break', 'resume', 'finish']);
+  assert.equal(h.read().timer, null); assert.equal(h.read().breakEndsAt, null);
+});
+test('uneven focus splits preserve exact total seconds and invalid plans are rejected', async () => {
+  const { timerPhases, validatePomodoro } = await corePromise;
+  const phases = timerPhases({ id: 'p', minutes: 7, startedAt: 0, endsAt: 600000, pomodoro: { breaks: 2, breakMinutes: 1 } });
+  assert.equal(phases.filter((p) => p.kind === 'focus').reduce((n,p) => n+p.durationSeconds,0), 420);
+  for (const plan of [{ breaks: 3, breakMinutes: 0 }, { breaks: 60, breakMinutes: 5 }, { breaks: 1.5, breakMinutes: 5 }, { breaks: 1, breakMinutes: 61 }]) assert.throws(() => validatePomodoro(60, plan));
+});
+test('offline Pomodoro keeps its schedule and saves missed blocks on reconnect without replaying alerts', async () => {
+  const h = await harness(); await h.connect();
+  await h.handle('start', { skillId: 'skill-a', minutes: 60, notes: '', pomodoro: { breaks: 3, breakMinutes: 5 } });
+  h.offline(true); h.advance(15 * 60000); await h.wake(); await h.wake();
+  assert.equal(h.saved().length, 0); assert.deepEqual(h.sounds, ['start', 'break']);
+  assert.ok(h.read().syncError); assert.equal(h.rules()[0].action.type, 'block');
+  h.offline(false); h.advance(5 * 60000); await h.wake(); await h.wake();
+  assert.deepEqual(h.saved(), ['timer-1:focus:0']); assert.deepEqual(h.sounds, ['start', 'break', 'resume']);
+  assert.equal(h.read().creditedSeconds, 900);
 });
