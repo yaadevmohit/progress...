@@ -10,7 +10,9 @@
     "test:skills-tracker": "node --test tests/skills-tracker.test.cjs",
     "test:growth-focus": "node --test tests/growth-focus.test.cjs",
     "package:growth-focus": "node scripts/package-growth-focus.mjs",
-    "test:growth-board-auth": "node --test tests/growth-board-auth.test.cjs"
+    "test:growth-board-auth": "node --test tests/growth-board-auth.test.cjs",
+    "seed:mock-users": "node scripts/seed-mock-users.mjs",
+    "test:mock-users": "node --test tests/mock-users.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
