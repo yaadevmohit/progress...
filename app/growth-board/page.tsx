@@ -339,7 +339,7 @@ export default function GrowthBoard() {
       </ScrollHeader>
       <main className={styles.main}>
         <div className={styles.stage}>
-          <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <div className={styles.dashboardHeading}>
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Hello, {displayName(user)}
@@ -416,6 +416,16 @@ export default function GrowthBoard() {
               </button>
             </aside>
           )}
+          <div className="mb-3 flex min-h-7 items-center justify-end gap-2">
+            {!selectedSkill && (
+              <>
+                <span className="text-xs font-semibold text-[var(--tracker-muted)]">
+                  {learningSkills.length} / {MAX_SKILLS}
+                </span>
+                <BoardRefreshButton />
+              </>
+            )}
+          </div>
           <div className={styles.dashboard}>
             <div className={styles.left}>
               <section
@@ -581,12 +591,6 @@ export default function GrowthBoard() {
                 />
               ) : (
                 <>
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs font-semibold text-[var(--tracker-muted)]">
-                      {learningSkills.length} / {MAX_SKILLS}
-                    </span>
-                    <BoardRefreshButton />
-                  </div>
                   <div className={styles.skills}>
                     {visibleSkillSlots(state.skills).map((slot) => {
                       const skill = stats.find(

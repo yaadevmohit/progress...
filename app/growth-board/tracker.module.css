@@ -174,10 +174,10 @@
   grid-row: 1;
   grid-column: 1;
 }
-.compact .donutCenter span:first-child {
+.compact .donutCenter > span:first-child {
   font-size: 23px;
 }
-.compact .donutCenter span:last-child {
+.compact .donutCenter > span:last-child {
   display: none;
 }
 .compact .leaderHeading {
@@ -1135,9 +1135,70 @@
 .reportingDates strong {
   font-weight: 800;
 }
-@media (max-width: 600px) {
+
+.dashboardHeading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding: 16px 0;
+}
+.dashboardHeading > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pieSlice,
+.mobileFocusLabel,
+.periodShort {
+  display: none;
+}
+.reportingDates {
+  text-align: right;
+}
+@media (max-width: 760px) {
+  .dashboardHeading {
+    gap: 12px;
+  }
   .reportingControl {
-    width: 100%;
-    align-items: flex-start;
+    align-items: flex-end;
+    justify-self: end;
+  }
+  .reportingControl .activityViews {
+    gap: 2px;
+    padding: 3px;
+  }
+  .reportingControl .activityViews button {
+    min-width: 30px;
+    padding: 6px 7px;
+  }
+  .periodLong,
+  .donutSlice {
+    display: none;
+  }
+  .periodShort,
+  .pieSlice {
+    display: inline;
+  }
+  .mobileFocusLabel {
+    display: inline;
+  }
+  .ring,
+  .compact .ring {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ring .donut {
+    position: static;
+    height: auto;
+    aspect-ratio: 1;
+    flex-shrink: 0;
+  }
+  .compact .donutCenter > span:last-child {
+    display: block;
+  }
+  .donutCenter > span:last-child {
+    text-align: center;
   }
 }

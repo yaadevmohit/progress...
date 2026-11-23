@@ -11,3 +11,14 @@ export function donutPath(offset: number, percent: number) {
     large = percent > 50 ? 1 : 0;
   return `M ${point(49, offset)} A 49 49 0 ${large} 1 ${point(49, end)} L ${point(37, end)} A 37 37 0 ${large} 0 ${point(37, offset)} Z`;
 }
+
+// The mobile pie uses the same angles and hit targets, filled to the centre.
+export function piePath(offset: number, percent: number) {
+  if (percent <= 0) return "";
+  if (percent >= 100) return "M 50 1 A 49 49 0 1 1 50 99 A 49 49 0 1 1 50 1 Z";
+  const point = (progress: number) => {
+    const angle = (progress / 100) * Math.PI * 2 - Math.PI / 2;
+    return `${50 + 49 * Math.cos(angle)} ${50 + 49 * Math.sin(angle)}`;
+  };
+  return `M 50 50 L ${point(offset)} A 49 49 0 ${percent > 50 ? 1 : 0} 1 ${point(offset + percent)} Z`;
+}
