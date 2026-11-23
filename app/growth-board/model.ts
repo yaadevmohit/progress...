@@ -1,3 +1,6 @@
+import { validatePomodoro } from "../../extension/growth-focus/timer-plan.mjs";
+export { validatePomodoro, timerPhases, currentPhase } from "../../extension/growth-focus/timer-plan.mjs";
+export type PomodoroConfig = { breaks: number; breakMinutes: number };
 export const MAX_SKILLS = 6;
 export const MAX_MINUTES = 1440;
 export const REMINDER_INTERVAL = 48 * 60 * 60 * 1000;
@@ -59,6 +62,8 @@ export type PracticeEntry = Pick<
   "id" | "skillId" | "durationSeconds" | "activityDate"
 >;
 export type ActiveTimer = {
+  pomodoro?: PomodoroConfig;
+  soundOwner?: "extension";
   id: string;
   skillId: string;
   minutes: number;
@@ -71,7 +76,8 @@ export type TrackerState = {
   version: 1;
   skills: Skill[];
   sessions: LearningSession[];
-  retainedPractice?: PracticeEntry[];
+  retainedPractice?: PracticeEntry[]; // Legacy deleted-session credits; discarded on read.
+  deletedSessionIds?: string[]; // Anonymous retry markers, never practice credit.
   activeTimer: ActiveTimer | null;
   reminderDismissedAt: number | null;
 };
@@ -146,12 +152,20 @@ export function skillTrail(skills: Skill[], skillId: string) {
   }
   return trail;
 }
+function deletedSkillIds(skills: Skill[]) {
+  const removed = new Set<string>();
+  for (const skill of skills) if (skill.status === "deleted")
+    for (const id of subtreeIds(skills, skill.id)) removed.add(id);
+  return removed;
+}
 export function practiceHistory(state: TrackerState): PracticeEntry[] {
-  return [...state.sessions, ...(state.retainedPractice ?? [])];
+  const removed = deletedSkillIds(state.skills);
+  return state.sessions.filter((session) => !removed.has(session.skillId));
 }
 export function skillStats(state: TrackerState, today: string) {
   const history = practiceHistory(state);
-  return state.skills.map((skill) => {
+  const removed = deletedSkillIds(state.skills);
+  return state.skills.filter((skill) => !removed.has(skill.id)).map((skill) => {
     const ids = subtreeIds(state.skills, skill.id);
     const sessions = state.sessions.filter((s) => ids.has(s.skillId));
     return {
@@ -402,6 +416,14 @@ export function decodeTracker(raw: string): {
         sessionIds.add(entry.id);
       }
     }
+    if (value.deletedSessionIds !== undefined) {
+      if (!Array.isArray(value.deletedSessionIds)) throw Error();
+      const deletedIds = new Set<string>();
+      for (const entry of value.deletedSessionIds) {
+        if (!id(entry) || deletedIds.has(entry) || sessionIds.has(entry)) throw Error();
+        deletedIds.add(entry);
+      }
+    }
     const timer = value.activeTimer;
     if (timer !== null) {
       if (
@@ -422,12 +444,17 @@ export function decodeTracker(raw: string): {
         typeof timer.startedAt !== "number" ||
         !Number.isFinite(timer.startedAt) ||
         typeof timer.endsAt !== "number" ||
-        timer.endsAt !== timer.startedAt + timer.minutes * 60000 ||
+        timer.endsAt !== timer.startedAt + (timer.minutes + (object(timer.pomodoro) ? Number(timer.pomodoro.breaks) * Number(timer.pomodoro.breakMinutes) : 0)) * 60000 ||
         typeof timer.notes !== "string" ||
         timer.notes.length > 2000 ||
         typeof timer.timeZone !== "string"
       )
         throw Error();
+      if (timer.pomodoro !== undefined) {
+        if (!object(timer.pomodoro)) throw Error();
+        validatePomodoro(timer.minutes as number, timer.pomodoro as PomodoroConfig);
+      }
+      if (timer.soundOwner !== undefined && timer.soundOwner !== "extension") throw Error();
     }
     if (
       value.reminderDismissedAt !== null &&
@@ -437,16 +464,21 @@ export function decodeTracker(raw: string): {
     )
       throw Error();
     const state = value as TrackerState;
+    const removedSkills = deletedSkillIds(state.skills);
+    const removedSessions = state.sessions.filter((s) => removedSkills.has(s.skillId));
     return {
       state: {
         ...state,
-        skills: state.skills.map((skill) => ({
+        skills: state.skills.filter((skill) => !removedSkills.has(skill.id)).map((skill) => ({
           ...skill,
           parentId: skill.parentId ?? null,
           description: skill.description ?? "",
           status: skill.status ?? "active",
         })),
-        retainedPractice: state.retainedPractice ?? [],
+        sessions: state.sessions.filter((s) => !removedSkills.has(s.skillId)),
+        retainedPractice: [],
+        deletedSessionIds: [...new Set([...(state.deletedSessionIds ?? []),
+          ...(state.retainedPractice ?? []).map((s) => s.id), ...removedSessions.map((s) => s.id)])],
       },
       error: null,
     };

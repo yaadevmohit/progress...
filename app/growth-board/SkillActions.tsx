@@ -1,8 +1,8 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { deactivateSkill, updateSkill } from "./storage";
-import type { LearningResource, Skill } from "./model";
+import { GitBranch, Pencil, Plus, Trash2, X } from "lucide-react";
+import { deactivateSkill, moveSkill, updateSkill, useTracker } from "./storage";
+import { activeSkills, isActiveSkill, skillTrail, subtreeIds, type LearningResource, type Skill } from "./model";
 import TrackerModal from "./TrackerModal";
 import styles from "./tracker.module.css";
 export default function SkillActions({
@@ -14,7 +14,7 @@ export default function SkillActions({
   onRemoved?: () => void;
   inline?: boolean;
 }) {
-  const [mode, setMode] = useState<"edit" | "remove" | null>(null);
+  const [mode, setMode] = useState<"edit" | "remove" | "move" | null>(null);
   if (skill.status === "deleted") return null;
   return (
     <>
@@ -41,8 +41,9 @@ export default function SkillActions({
         </button>
       </div>
       {mode === "edit" && (
-        <EditSkill skill={skill} onClose={() => setMode(null)} />
+        <EditSkill skill={skill} onClose={() => setMode(null)} onMove={() => setMode("move")} />
       )}{" "}
+      {mode === "move" && <MoveSkill skill={skill} onClose={() => setMode(null)} />}
       {mode === "remove" && (
         <RemoveSkill
           skill={skill}
@@ -53,7 +54,7 @@ export default function SkillActions({
     </>
   );
 }
-function EditSkill({ skill, onClose }: { skill: Skill; onClose: () => void }) {
+function EditSkill({ skill, onClose, onMove }: { skill: Skill; onClose: () => void; onMove: () => void }) {
   const [name, setName] = useState(skill.name),
     [description, setDescription] = useState(skill.description ?? ""),
     [resources, setResources] = useState<LearningResource[]>(
@@ -104,6 +105,11 @@ function EditSkill({ skill, onClose }: { skill: Skill; onClose: () => void }) {
             className={styles.input}
           />
         </label>
+        {isActiveSkill(skill) && <button type="button" onClick={onMove}
+          className="flex items-center gap-2 text-sm font-bold underline underline-offset-4">
+          <GitBranch size={16} aria-hidden="true" />
+          {skill.parentId ? "Move to another parent skill" : "Move under another skill"}
+        </button>}
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-bold">Resources</h3>
@@ -217,8 +223,9 @@ function RemoveSkill({
     >
       <p className="mb-3 font-bold">{skill.name}</p>
       <p className="text-sm leading-relaxed text-[var(--tracker-muted)]">
-        Archive it to return later, or delete its card. This also applies to its
-        subskills. Your sessions and earned learning time will stay in history.
+        Archiving keeps this skill, its subskills, sessions, and progress for later.
+        Deleting permanently removes this skill and all its subskills, resources,
+        sessions, and practice time. Totals, streaks, and charts will be recalculated.
       </p>
       {error && (
         <p role="alert" className="mt-3 text-sm text-[var(--tracker-error)]">
@@ -242,7 +249,7 @@ function RemoveSkill({
           onClick={() => void remove("deleted")}
           className="rounded-xl border border-[var(--tracker-line)] px-4 py-3 text-sm font-bold text-[var(--tracker-error)]"
         >
-          Delete card
+          Delete skill and history
         </button>
         <button
           type="button"
@@ -255,4 +262,33 @@ function RemoveSkill({
       </div>
     </TrackerModal>
   );
+}
+
+function MoveSkill({ skill, onClose }: { skill: Skill; onClose: () => void }) {
+  const { state, error: storageError } = useTracker();
+  const excluded = subtreeIds(state.skills, skill.id);
+  const parents = activeSkills(state.skills).filter((parent) => !excluded.has(parent.id) && parent.id !== skill.parentId);
+  const [parentId, setParentId] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setError("");
+    try { await moveSkill(skill.id, parentId); onClose(); }
+    catch (error) { setError((error as Error).message); }
+    finally { setBusy(false); }
+  }
+  return <TrackerModal title="Move skill" onClose={onClose} busy={busy}>
+    <form onSubmit={submit} className="space-y-4">
+      <p className="text-sm text-[var(--tracker-muted)]">Move {skill.name} and its subskills under another skill. Sessions, resources, and practice time stay attached. The new parent’s totals will include this skill’s practice.</p>
+      <label className="block text-sm font-bold">Parent skill
+        <select required value={parentId} onChange={(event) => setParentId(event.target.value)} className={styles.input}>
+          <option value="">Choose a parent skill</option>
+          {parents.map((parent) => <option key={parent.id} value={parent.id}>{skillTrail(state.skills, parent.id).map((s) => s.name).join(" / ")}</option>)}
+        </select>
+      </label>
+      {!parents.length && <p className="text-sm text-[var(--tracker-muted)]">Add another main skill first. A skill cannot be moved into its own subskills.</p>}
+      {(error || storageError) && <p role="alert" className="text-sm text-[var(--tracker-error)]">{error || storageError}</p>}
+      <button disabled={busy || !parentId || !!storageError} className={styles.actionButton}>{busy ? "Moving…" : "Move skill"}</button>
+    </form>
+  </TrackerModal>;
 }

@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:skills-tracker": "node --test tests/skills-tracker.test.cjs"
+    "test:skills-tracker": "node --test tests/skills-tracker.test.cjs",
+    "test:growth-focus": "node --test tests/growth-focus.test.cjs",
+    "package:growth-focus": "node scripts/package-growth-focus.mjs",
+    "test:growth-board-auth": "node --test tests/growth-board-auth.test.cjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "lucide-react": "^1.16.0",
     "next": "^16.2.6",
     "postcss": "^8.5.15",
@@ -25,5 +29,8 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

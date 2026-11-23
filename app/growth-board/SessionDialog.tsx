@@ -10,6 +10,7 @@ import {
   localDay,
   type TrackerState,
 } from "./model";
+import { playSessionAlert, unlockSessionAudio } from "./session-alert";
 import { logSession, startTimer } from "./storage";
 import styles from "./tracker.module.css";
 export default function SessionDialog({
@@ -29,7 +30,9 @@ export default function SessionDialog({
   const [skillId, setSkillId] = useState(selected || available[0]?.id || ""),
     [adding, setAdding] = useState(!available.length),
     [minutes, setMinutes] = useState(25),
-    [mode, setMode] = useState<"recorded" | "timer">("recorded"),
+    [mode, setMode] = useState<"recorded" | "timer" | "pomodoro">("recorded"),
+    [breaks, setBreaks] = useState(3),
+    [breakMinutes, setBreakMinutes] = useState(5),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -45,12 +48,14 @@ export default function SessionDialog({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    if (mode !== "recorded") unlockSessionAudio();
     setBusy(true);
     setError("");
     const data = new FormData(event.currentTarget);
     try {
-      if (mode === "timer") {
-        await startTimer(skillId, minutes, String(data.get("notes") || ""));
+      if (mode !== "recorded") {
+        await startTimer(skillId, minutes, String(data.get("notes") || ""), mode === "pomodoro" ? { breaks, breakMinutes } : undefined);
+        playSessionAlert("start");
         onStarted(
           state.skills.find((skill) => skill.id === skillId)?.name || "Focus",
           minutes,
@@ -97,15 +102,15 @@ export default function SessionDialog({
           className="mx-auto mb-5 flex w-fit rounded-full bg-[var(--tracker-soft)] p-1"
           aria-label="Session type"
         >
-          {(["recorded", "timer"] as const).map((value) => (
+          {(["recorded", "timer", "pomodoro"] as const).map((value) => (
             <button
               key={value}
               type="button"
               aria-pressed={mode === value}
               onClick={() => setMode(value)}
-              className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${mode === value ? "bg-[var(--tracker-action)] text-[var(--tracker-on-action)]" : "text-[var(--tracker-ink)]"}`}
+              className={`rounded-full px-3 py-2 text-sm font-bold transition-colors ${mode === value ? "bg-[var(--tracker-action)] text-[var(--tracker-on-action)]" : "text-[var(--tracker-ink)]"}`}
             >
-              {value === "recorded" ? "Log time" : "Focus timer"}
+              {value === "recorded" ? "Log time" : value === "timer" ? "Focus timer" : "Pomodoro"}
             </button>
           ))}
         </div>
@@ -169,7 +174,7 @@ export default function SessionDialog({
             </div>
           )}
           <div>
-            <span className="block text-sm font-bold">Duration</span>
+            <span className="block text-sm font-bold">{mode === "pomodoro" ? "Total focus duration (breaks excluded)" : "Duration"}</span>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {[25, 45, 60].map((value) => (
                 <button
@@ -187,6 +192,19 @@ export default function SessionDialog({
               <DurationDial minutes={minutes} onChange={setMinutes} />
             </div>
           </div>
+          {mode === "pomodoro" && (
+            <fieldset className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm font-bold">Number of breaks
+                  <input type="number" min={1} max={Math.min(24, minutes - 1)} step={1} required value={breaks} onChange={(e) => setBreaks(Number(e.target.value))} className={styles.input} />
+                </label>
+                <label className="text-sm font-bold">Break duration (min)
+                  <input type="number" min={1} max={60} step={1} required value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value))} className={styles.input} />
+                </label>
+              </div>
+              <p className="text-xs text-[var(--tracker-muted)]">{minutes} min focus + {breaks * breakMinutes} min breaks = {minutes + breaks * breakMinutes} min total. {breaks + 1} focus blocks, saved individually when each finishes. Ending early keeps completed blocks.</p>
+            </fieldset>
+          )}
           {mode === "recorded" && (
             <label className="block text-sm font-bold">
               Date
@@ -211,7 +229,7 @@ export default function SessionDialog({
               rows={2}
               className={styles.input}
               placeholder={
-                mode === "timer"
+                mode !== "recorded"
                   ? "What are you working on today?"
                   : "What did you work on?"
               }
@@ -222,7 +240,7 @@ export default function SessionDialog({
               {error}
             </p>
           )}
-          {mode === "timer" && state.activeTimer && (
+          {mode !== "recorded" && state.activeTimer && (
             <p className="text-sm text-[var(--tracker-ink)]">
               Finish or cancel your active timer before starting another.
             </p>
@@ -232,13 +250,13 @@ export default function SessionDialog({
               busy ||
               adding ||
               !skillId ||
-              (mode === "timer" && !!state.activeTimer)
+              (mode !== "recorded" && !!state.activeTimer)
             }
             className="w-full rounded-xl bg-[var(--tracker-action)] p-3 font-bold text-[var(--tracker-on-action)] disabled:opacity-40"
           >
             {busy
               ? "Saving…"
-              : mode === "timer"
+              : mode !== "recorded"
                 ? "Start timer"
                 : "Save session"}
           </button>

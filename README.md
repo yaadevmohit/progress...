@@ -4,7 +4,9 @@ track up to six skills, log practice, run a focus timer and save learning resour
 
 open `/growth-board` to use the app.
 
-everything stays in your browser for now. there is no database or authentication.
+Guest boards stay in your browser. Sign in with email/password or Google to save a private board in Supabase and greet you by name.
+
+Follow [the authentication and database setup guide](docs/authentication-setup.md) to create the database, configure credentials, and enable Google sign-in. Start with Node.js 22+ (Node 24 is specified in `.nvmrc`).
 
 to run locally:
 
@@ -13,11 +15,22 @@ npm ci
 npm run dev
 ```
 
-the app folder contains the screens and components. the docs folder has the proposed database schema.
+the app folder contains the screens and components. the live database migration is in `supabase/migrations`; the docs folder includes setup instructions and an older design-only schema.
 
 to check and build:
 
 ```sh
 npm run lint
 npm run build
+```
+
+## Growth Focus extension
+
+A Momentum-inspired Chrome new-tab dashboard can start skill timers, record completed sessions in Growth Board, and block distractions during focus (including incognito when explicitly enabled). Load `extension/growth-focus` as an unpacked extension in Chrome, then connect your app address in its Settings.
+
+See [the installation and implementation guide](docs/growth-focus-extension.md) for setup, features, sync/recovery behavior, incognito limits, privacy, and the exact scope compared with Momentum.
+
+```sh
+npm run test:growth-focus
+npm run package:growth-focus
 ```

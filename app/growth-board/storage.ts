@@ -2,6 +2,9 @@
 import { useMemo, useSyncExternalStore } from "react";
 import {
   COLORS,
+  timerPhases,
+  validatePomodoro,
+  type PomodoroConfig,
   activeSkills,
   rootSkills,
   subtreeIds,
@@ -18,7 +21,33 @@ import {
   type Skill,
   type TrackerState,
 } from "./model";
-export const STORAGE_KEY = "progress.skills-tracker.v1";
+export const GUEST_STORAGE_KEY = "progress.skills-tracker.v1";
+export let STORAGE_KEY = GUEST_STORAGE_KEY;
+type Persistence = { save: (state: TrackerState) => Promise<void> };
+let persistence: Persistence | null = null;
+let blocked = false;
+export function configureTracker(userId: string | null, adapter: Persistence | null = null, loading = false) {
+  STORAGE_KEY = userId ? `${GUEST_STORAGE_KEY}.user.${userId}` : GUEST_STORAGE_KEY;
+  persistence = adapter;
+  blocked = loading;
+  window.dispatchEvent(new Event(CHANGE));
+}
+export function replaceTracker(state: TrackerState) {
+  const raw = JSON.stringify(state);
+  const parsed = decodeTracker(raw);
+  if (parsed.error) throw new Error(parsed.error);
+  localStorage.setItem(STORAGE_KEY, raw);
+  window.dispatchEvent(new Event(CHANGE));
+}
+export async function importGuestTracker() {
+  const parsed = decodeTracker(localStorage.getItem(GUEST_STORAGE_KEY) ?? EMPTY);
+  if (parsed.error) throw new Error(parsed.error);
+  return mutate((state) => {
+    if (state.skills.length || state.sessions.length || state.activeTimer || state.retainedPractice?.length)
+      throw new Error("Browser progress can only be imported into an empty account board.");
+    return { state: parsed.state, result: null };
+  });
+}
 const CHANGE = "skills-tracker:changed";
 const EMPTY = JSON.stringify(EMPTY_STATE);
 function snapshot() {
@@ -53,13 +82,18 @@ export function useTracker() {
 async function mutate<T>(
   change: (state: TrackerState) => { state: TrackerState; result: T },
 ): Promise<T> {
-  const update = () => {
+  const key = STORAGE_KEY;
+  const adapter = persistence;
+  const update = async () => {
+    if (blocked || key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your board is loading or your account changed. Please try again.");
     const raw = localStorage.getItem(STORAGE_KEY) ?? EMPTY;
     const parsed = decodeTracker(raw);
     if (parsed.error) throw new Error(parsed.error);
     const next = change(parsed.state);
     if (!decodeTracker(JSON.stringify(next.state)).error) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next.state));
+      if (adapter) await adapter.save(next.state);
+      if (key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your account changed. Reload your board before continuing.");
+      localStorage.setItem(key, JSON.stringify(next.state));
       window.dispatchEvent(new Event(CHANGE));
       return next.result;
     }
@@ -68,7 +102,7 @@ async function mutate<T>(
   try {
     return navigator.locks
       ? await navigator.locks.request(STORAGE_KEY, update)
-      : update();
+      : await update();
   } catch (error) {
     if (error instanceof Error && !(error instanceof DOMException)) throw error;
     throw new Error(
@@ -168,11 +202,14 @@ export async function startTimer(
   skillId: string,
   minutes: number,
   notes: string,
+  pomodoro?: PomodoroConfig,
+  soundOwner?: "extension",
 ) {
   return mutate((state) => {
     ensureSession(state, skillId, minutes, localDay(), notes);
     if (state.activeTimer)
       throw new Error("Finish or cancel the current timer first.");
+    if (pomodoro !== undefined) validatePomodoro(minutes, pomodoro);
     const startedAt = Date.now();
     const timer: ActiveTimer = {
       id: crypto.randomUUID(),
@@ -180,7 +217,9 @@ export async function startTimer(
       minutes,
       notes: notes.trim(),
       startedAt,
-      endsAt: startedAt + minutes * 60000,
+      endsAt: startedAt + (minutes + (pomodoro ? pomodoro.breaks * pomodoro.breakMinutes : 0)) * 60000,
+      ...(pomodoro ? { pomodoro } : {}),
+      ...(soundOwner ? { soundOwner } : {}),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
     return { state: { ...state, activeTimer: timer }, result: timer };
@@ -190,6 +229,7 @@ export async function finishTimer(timerId: string, early = false) {
   return mutate((state) => {
     const timer = state.activeTimer;
     if (!timer || timer.id !== timerId) return { state, result: null };
+    if (timer.pomodoro) return settlePomodoro(state, timer, Date.now(), early);
     const finishedAt = early
       ? Math.min(Date.now(), timer.endsAt)
       : timer.endsAt;
@@ -217,7 +257,7 @@ export async function finishTimer(timerId: string, early = false) {
       state: {
         ...state,
         activeTimer: null,
-        sessions: [...state.sessions, ...(state.retainedPractice ?? [])].some(
+        sessions: (state.deletedSessionIds ?? []).includes(timer.id) || state.sessions.some(
           (s) => s.id === timer.id,
         )
           ? state.sessions
@@ -227,14 +267,29 @@ export async function finishTimer(timerId: string, early = false) {
     };
   });
 }
+// Persist every completed focus block at its own boundary. Deterministic IDs
+// make app/extension races and offline recovery safe, including deleted rows.
+function settlePomodoro(state: TrackerState, timer: ActiveTimer, now: number, stop = false) {
+  const ids = new Set([...state.sessions.map((s) => s.id), ...(state.deletedSessionIds ?? [])]);
+  const added: LearningSession[] = [];
+  for (const phase of timerPhases(timer)) {
+    if (phase.kind !== "focus" || phase.endsAt > now || ids.has(phase.key)) continue;
+    added.push({ id: phase.key, skillId: timer.skillId, durationSeconds: phase.durationSeconds,
+      activityDate: localDay(new Date(phase.endsAt)), notes: timer.notes, source: "timer",
+      createdAt: new Date(phase.endsAt).toISOString(), timeZone: timer.timeZone });
+  }
+  const done = now >= timer.endsAt;
+  return { state: { ...state, sessions: [...added.reverse(), ...state.sessions],
+    activeTimer: done || stop ? null : timer },
+    result: done ? added[0] ?? null : null };
+}
 export async function cancelTimer(timerId: string) {
-  return mutate((state) => ({
-    state: {
-      ...state,
-      activeTimer: state.activeTimer?.id === timerId ? null : state.activeTimer,
-    },
-    result: null,
-  }));
+  return mutate((state) => {
+    const timer = state.activeTimer;
+    if (!timer || timer.id !== timerId) return { state, result: null };
+    if (timer.pomodoro) return settlePomodoro(state, timer, Date.now(), true);
+    return { state: { ...state, activeTimer: null }, result: null };
+  });
 }
 export async function dismissReminder() {
   return mutate((state) => ({
@@ -390,6 +445,23 @@ export async function updateSkill(
     };
   });
 }
+export async function moveSkill(skillId: string, parentId: string) {
+  return mutate((state) => {
+    const skill = state.skills.find((s) => s.id === skillId);
+    const parent = state.skills.find((s) => s.id === parentId);
+    if (!skill || !isActiveSkill(skill)) throw new Error("Choose an active skill to move.");
+    if (!parent || !isActiveSkill(parent)) throw new Error("Choose an active parent skill.");
+    if (subtreeIds(state.skills, skillId).has(parentId))
+      throw new Error("A skill cannot be moved under itself or one of its subskills.");
+    if (skill.parentId === parentId) return { state, result: null };
+    const siblings = activeSkills(state.skills).filter((s) => s.parentId === parentId);
+    if (siblings.some((s) => s.name.toLowerCase() === skill.name.toLowerCase()))
+      throw new Error("This parent already has a subskill with that name. Rename the skill first.");
+    const slot = (parent.slot + 1 + siblings.length) % MAX_SKILLS;
+    return { state: { ...state, skills: state.skills.map((s) => s.id === skillId
+      ? { ...s, parentId, slot, color: COLORS[slot] } : s) }, result: null };
+  });
+}
 export async function deactivateSkill(
   skillId: string,
   status: "archived" | "deleted",
@@ -402,6 +474,15 @@ export async function deactivateSkill(
     const affected = subtreeIds(state.skills, skillId);
     if (state.activeTimer && affected.has(state.activeTimer.skillId))
       throw new Error("Finish or cancel the timer for this skill first.");
+    if (status === "deleted") {
+      const removedIds = state.sessions.filter((s) => affected.has(s.skillId)).map((s) => s.id);
+      return { state: { ...state,
+        skills: state.skills.filter((s) => !affected.has(s.id)),
+        sessions: state.sessions.filter((s) => !affected.has(s.skillId)),
+        retainedPractice: [],
+        deletedSessionIds: [...new Set([...(state.deletedSessionIds ?? []), ...removedIds])],
+      }, result: null };
+    }
     return {
       state: {
         ...state,
@@ -465,19 +546,12 @@ export async function deleteSession(sessionId: string, allForSkill = false) {
       allForSkill ? s.skillId === entry.skillId : s.id === sessionId,
     );
     const ids = new Set(removed.map((s) => s.id));
-    const credits = removed.map(
-      ({ id, skillId, durationSeconds, activityDate }) => ({
-        id,
-        skillId,
-        durationSeconds,
-        activityDate,
-      }),
-    );
     return {
       state: {
         ...state,
         sessions: state.sessions.filter((s) => !ids.has(s.id)),
-        retainedPractice: [...(state.retainedPractice ?? []), ...credits],
+        retainedPractice: [],
+        deletedSessionIds: [...new Set([...(state.deletedSessionIds ?? []), ...ids])],
       },
       result: removed.length,
     };

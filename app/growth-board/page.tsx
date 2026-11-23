@@ -1,6 +1,9 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Plus, X } from "lucide-react";
+import AccountButtons from "../auth/AccountButtons";
+import { displayName, useAuth } from "../auth/AuthProvider";
+import { BoardRefreshButton, BoardSyncStatus } from "./BoardDataProvider";
 import SkillComposer from "./SkillComposer";
 import SkillActions from "./SkillActions";
 import DeleteSessionButton from "./DeleteSessionButton";
@@ -9,12 +12,20 @@ import SkillDetail from "./SkillDetail";
 import ThemeToggle from "./ThemeToggle";
 import ScrollHeader from "./ScrollHeader";
 import ActivityChart from "./ActivityChart";
+import ReportingPeriodSelect from "./ReportingPeriodSelect";
+import {
+  reportingRange,
+  reportingState,
+  type DashboardPeriod,
+} from "./reporting";
 import PracticeDonut from "./PracticeDonut";
 import StreakFlame from "./StreakFlame";
 import SkillResources from "./SkillResources";
 import SessionDialog from "./SessionDialog";
 import {
   currentStreak,
+  currentPhase,
+  timerPhases,
   activeSkills,
   rootSkills,
   skillDistribution,
@@ -64,12 +75,10 @@ function Timer({
   onError: (message: string) => void;
   onFinish: (id: string, early?: boolean) => Promise<void>;
 }) {
-  const remaining = Math.min(
-      timer.minutes * 60,
-      Math.max(0, Math.ceil((timer.endsAt - now) / 1000)),
-    ),
+  const phase = currentPhase(timer, now ?? timer.startedAt);
+  const remaining = Math.max(0, Math.ceil(((phase?.endsAt ?? timer.endsAt) - (now ?? timer.startedAt)) / 1000)),
     elapsed = Math.max(0, Math.floor((now - timer.startedAt) / 1000));
-  const ratio = remaining / (timer.minutes * 60),
+  const ratio = remaining / (phase?.durationSeconds ?? timer.minutes * 60),
     [busy, setBusy] = useState(false);
   async function action(finish: boolean) {
     setBusy(true);
@@ -88,11 +97,12 @@ function Timer({
       aria-label="Focus timer"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="truncate text-sm font-bold">{name}</h2>
+        <h2 className="truncate text-sm font-bold">{name}{timer.pomodoro ? " · Pomodoro" : ""}</h2>
         <span className="text-xs font-semibold text-[var(--tracker-ink)]">
-          In focus
+          {phase?.kind === "break" ? "On a break" : "In focus"}
         </span>
       </div>
+      {timer.pomodoro && <p className="mt-2 text-center text-xs text-[var(--tracker-muted)]">{phase?.kind === "break" ? `Break ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks}` : `Focus block ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks + 1}`} · {timer.minutes} min focus total</p>}
       <div className="relative mx-auto my-1 grid h-36 w-36 place-items-center">
         <svg
           viewBox="0 0 160 160"
@@ -127,6 +137,7 @@ function Timer({
       </div>
       <div className="flex justify-center gap-4 text-xs">
         <button
+          hidden={!!timer.pomodoro}
           disabled={busy || elapsed < 60}
           onClick={() => void action(true)}
           className="font-bold text-[var(--tracker-ink)] disabled:opacity-35"
@@ -138,13 +149,14 @@ function Timer({
           onClick={() => void action(false)}
           className="text-[var(--tracker-muted)]"
         >
-          Cancel timer
+          {timer.pomodoro ? "End Pomodoro · keep completed blocks" : "Cancel timer"}
         </button>
       </div>
     </section>
   );
 }
 export default function GrowthBoard() {
+  const { user } = useAuth();
   const { state, error: storageError, ready } = useTracker(),
     now = useClock();
   const today = now ? localDay(new Date(now)) : "2000-01-01";
@@ -154,15 +166,34 @@ export default function GrowthBoard() {
     [notice, setNotice] = useState(""),
     [completed, setCompleted] = useState<LearningSession | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<DashboardPeriod>("weekly");
+  const range = useMemo(() => reportingRange(today, period), [today, period]);
+  const periodState = useMemo(
+    () => reportingState(state, range),
+    [state, range],
+  );
   const attemptedTimer = useRef<string | null>(null);
-  const history = practiceHistory(state);
+  const lifetimeHistory = practiceHistory(state);
+  const history = practiceHistory(periodState);
   const learningSkills = activeSkills(rootSkills(state.skills));
-  const stats = skillStats(state, today),
-    globalLeader = mostPractised(state, today),
-    streak = currentStreak(history, today),
+  const stats = useMemo(() => {
+    const lifetimeStats = new Map(
+      skillStats(state, today).map((skill) => [skill.id, skill.streak]),
+    );
+    return skillStats(periodState, today).map((skill) => ({
+      ...skill,
+      streak: lifetimeStats.get(skill.id) ?? 0,
+    }));
+  }, [state, periodState, today]);
+  const globalLeader = mostPractised(periodState, today),
+    streak = currentStreak(lifetimeHistory, today),
     total = history.reduce((sum, s) => sum + s.durationSeconds, 0);
-  const focused = selectedId ? focusSkill(state, selectedId, today) : null;
-  const selectedSkill = focused?.skill ?? null;
+  const focused = selectedId
+    ? focusSkill(periodState, selectedId, today)
+    : null;
+  const selectedSkill = focused
+    ? (stats.find((skill) => skill.id === focused.skill.id) ?? null)
+    : null;
   const distribution = skillDistribution(stats, selectedSkill?.id ?? null);
   const leader = selectedSkill
     ? [...distribution]
@@ -173,8 +204,8 @@ export default function GrowthBoard() {
   const share =
     leader && scopeTotal ? Math.round((leader.seconds / scopeTotal) * 100) : 0;
   const activitySessions = focused?.activity ?? history;
-  const visibleSessions = focused?.sessions ?? state.sessions;
-  const latestSession = mostRecentSession(state.sessions);
+  const visibleSessions = focused?.sessions ?? periodState.sessions;
+  const latestSession = mostRecentSession(periodState.sessions);
   const latestSkill = state.skills.find(
     (skill) => skill.id === latestSession?.skillId,
   );
@@ -183,13 +214,17 @@ export default function GrowthBoard() {
     async (id: string, early = false) => {
       const saved = await finishTimer(id, early);
       if (saved) {
-        setCompleted(saved);
+        setCompleted(
+          timer?.pomodoro
+            ? { ...saved, durationSeconds: timer.minutes * 60 }
+            : saved,
+        );
         setNotice("");
         setError("");
-        playSessionAlert("finish");
+        if (timer?.soundOwner !== "extension") playSessionAlert("finish");
       }
     },
-    [setCompleted, setNotice, setError],
+    [setCompleted, setNotice, setError, timer],
   );
   useEffect(() => {
     const originalTitle = document.title;
@@ -200,8 +235,13 @@ export default function GrowthBoard() {
   useEffect(() => {
     if (timer && now !== null) {
       const seconds = Math.min(
-        timer.minutes * 60,
-        Math.max(0, Math.ceil((timer.endsAt - now) / 1000)),
+        currentPhase(timer, now)?.durationSeconds ?? timer.minutes * 60,
+        Math.max(
+          0,
+          Math.ceil(
+            ((currentPhase(timer, now)?.endsAt ?? timer.endsAt) - now) / 1000,
+          ),
+        ),
       );
       const countdown = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
       document.title = `${countdown} · Growth Board`;
@@ -215,15 +255,35 @@ export default function GrowthBoard() {
     if (
       !timer ||
       !now ||
-      now < timer.endsAt ||
-      attemptedTimer.current === timer.id
+      now < (timer.pomodoro ? timerPhases(timer)[0].endsAt : timer.endsAt) ||
+      attemptedTimer.current ===
+        (currentPhase(timer, now)?.key ?? `${timer.id}:done`)
     )
       return;
-    attemptedTimer.current = timer.id;
+    attemptedTimer.current =
+      currentPhase(timer, now)?.key ?? `${timer.id}:done`;
     void completeTimer(timer.id).catch((e) => setError((e as Error).message));
   }, [timer, now, completeTimer]);
+  const lastPhase = useRef<{ timerId: string; key: string } | null>(null);
+  useEffect(() => {
+    if (!timer || !now) {
+      lastPhase.current = null;
+      return;
+    }
+    const phase = currentPhase(timer, now);
+    if (!phase) return;
+    if (
+      lastPhase.current?.timerId === timer.id &&
+      lastPhase.current.key !== phase.key &&
+      timer.soundOwner !== "extension"
+    ) {
+      playSessionAlert(phase.kind === "break" ? "break" : "resume");
+    }
+    lastPhase.current = { timerId: timer.id, key: phase.key };
+  }, [timer, now]);
   const reminder =
     ready &&
+    !user &&
     now !== null &&
     (state.reminderDismissedAt === null ||
       now - state.reminderDismissedAt >= REMINDER_INTERVAL);
@@ -245,7 +305,7 @@ export default function GrowthBoard() {
           Growth Board<span className="text-[var(--tracker-accent)]">.</span>
         </a>
         <div className={styles.headerActions}>
-          <button
+          {!user && <button
             aria-label="Export tracker backup"
             onClick={() => {
               try {
@@ -259,7 +319,7 @@ export default function GrowthBoard() {
             className={styles.icon}
           >
             <Download size={18} />
-          </button>
+          </button>}
           <button
             disabled={!canEdit}
             onClick={() => setSession("")}
@@ -273,6 +333,7 @@ export default function GrowthBoard() {
             />
             Log session
           </button>
+          <AccountButtons growth />
           <ThemeToggle />
         </div>
       </ScrollHeader>
@@ -281,14 +342,20 @@ export default function GrowthBoard() {
           <div className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Hello, learner
+                Hello, {displayName(user)}
                 <span className="text-[var(--tracker-accent)]">.</span>
               </h1>
               <p className="mt-1 text-sm font-semibold text-[var(--tracker-muted)]">
                 Make a little room for what you want to learn.
               </p>
             </div>
+            <ReportingPeriodSelect
+              period={period}
+              range={range}
+              onChange={setPeriod}
+            />
           </div>
+          <BoardSyncStatus />
           {(storageError || error) && (
             <div
               role="alert"
@@ -300,18 +367,23 @@ export default function GrowthBoard() {
                   Dismiss
                 </button>
               )}
-              {timer && now && now >= timer.endsAt && (
-                <button
-                  className="ml-3 underline"
-                  onClick={() => {
-                    void completeTimer(timer.id)
-                      .then(() => setError(""))
-                      .catch((e) => setError(e.message));
-                  }}
-                >
-                  Retry saving timer
-                </button>
-              )}
+              {timer &&
+                now &&
+                now >=
+                  (timer.pomodoro
+                    ? timerPhases(timer)[0].endsAt
+                    : timer.endsAt) && (
+                  <button
+                    className="ml-3 underline"
+                    onClick={() => {
+                      void completeTimer(timer.id)
+                        .then(() => setError(""))
+                        .catch((e) => setError(e.message));
+                    }}
+                  >
+                    Retry saving timer
+                  </button>
+                )}
             </div>
           )}
           <div role="status" aria-live="polite" aria-atomic="true">
@@ -331,9 +403,9 @@ export default function GrowthBoard() {
           {reminder && (
             <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--tracker-ink)]">
-                <strong>Learn here. Take your progress anywhere, soon.</strong>{" "}
-                Sign-in and sync are coming soon. For now, your progress stays
-                in this browser. Export a backup to keep a copy.
+                <strong>Take your progress with you.</strong> Create an account to
+                move your browser progress online automatically. Already have an
+                account? Sign in to open your saved board.
               </p>
               <button
                 onClick={() => void snooze()}
@@ -351,6 +423,7 @@ export default function GrowthBoard() {
               >
                 <PracticeDonut
                   skills={distribution}
+                  label={range.label}
                   selectedId={selectedSkill?.id ?? null}
                   onSelect={(id) =>
                     setSelectedId(id ?? selectedSkill?.parentId ?? null)
@@ -363,7 +436,10 @@ export default function GrowthBoard() {
                       : "The most practiced"}
                   </p>
                   <h2 className="mt-2 break-words text-2xl font-bold text-[var(--tracker-ink)]">
-                    {leader?.name || "Your next chapter"}{" "}
+                    {leader?.name ||
+                      (state.skills.length
+                        ? "No practice yet"
+                        : "Your next chapter")}{" "}
                     {leader && !isActiveSkill(leader) && (
                       <span className={styles.statusBadge}>
                         {leader.status}
@@ -377,8 +453,10 @@ export default function GrowthBoard() {
                   {leader
                     ? `${durationLabel(leader.seconds)} · ${share}% of ${selectedSkill ? "this skill’s" : "your learning"} time.`
                     : selectedSkill
-                      ? "Log a session to start this skill’s breakdown."
-                      : "Add a skill and log your first session. Your most-practised skill will appear here."}
+                      ? "No practice logged in this period."
+                      : state.skills.length
+                        ? "No practice logged in this period."
+                        : "Add a skill and log your first session. Your most-practised skill will appear here."}
                 </p>
                 <div className={styles.leaderDetails}>
                   <div className={styles.latestSession}>
@@ -411,7 +489,7 @@ export default function GrowthBoard() {
                       </>
                     ) : (
                       <p className="mt-1 text-sm text-[var(--tracker-muted)]">
-                        Your first session will appear here.
+                        No sessions in this period.
                       </p>
                     )}
                   </div>
@@ -492,6 +570,8 @@ export default function GrowthBoard() {
                   key={selectedSkill.id}
                   allSkills={state.skills}
                   stats={stats}
+                  periodLabel={range.label}
+                  allSessions={state.sessions}
                   onSelect={setSelectedId}
                   skill={selectedSkill}
                   sessions={visibleSessions}
@@ -501,10 +581,11 @@ export default function GrowthBoard() {
                 />
               ) : (
                 <>
-                  <div className="flex items-center justify-end">
+                  <div className="flex flex-col items-end">
                     <span className="text-xs font-semibold text-[var(--tracker-muted)]">
                       {learningSkills.length} / {MAX_SKILLS}
                     </span>
+                    <BoardRefreshButton />
                   </div>
                   <div className={styles.skills}>
                     {visibleSkillSlots(state.skills).map((slot) => {
@@ -629,9 +710,9 @@ export default function GrowthBoard() {
               )}
               {ready && now ? (
                 <ActivityChart
-                  skills={selectedSkill ? [selectedSkill] : state.skills}
+                  period={period}
+                  range={range}
                   sessions={activitySessions}
-                  today={today}
                   skillName={selectedSkill?.name}
                 />
               ) : (
@@ -661,18 +742,18 @@ export default function GrowthBoard() {
                 Recent sessions
               </h2>
               <span className="text-xs font-semibold text-[var(--tracker-muted)]">
-                Saved on this device
+                {range.label}
               </span>
             </div>
-            {!state.sessions.length ? (
+            {!periodState.sessions.length ? (
               <div
                 className={`${styles.panel} text-sm text-[var(--tracker-muted)]`}
               >
-                Your learning sessions will appear here.
+                No sessions in this period.
               </div>
             ) : (
               <ul className="divide-y divide-[var(--tracker-line)] rounded-2xl border border-[var(--tracker-line)]">
-                {[...state.sessions]
+                {[...periodState.sessions]
                   .sort(
                     (a, b) =>
                       b.activityDate.localeCompare(a.activityDate) ||
@@ -714,7 +795,9 @@ export default function GrowthBoard() {
                           {dateLabel(item.activityDate)},{" "}
                           {item.activityDate.slice(0, 4)} ·{" "}
                           {item.source === "timer"
-                            ? "Focus timer"
+                            ? item.id.includes(":focus:")
+                              ? `Pomodoro · block ${Number(item.id.split(":").at(-1)) + 1}`
+                              : "Focus timer"
                             : "Logged time"}
                         </p>
                       </div>
@@ -742,7 +825,9 @@ export default function GrowthBoard() {
               </ul>
             )}
             <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
-              Local storage only · No account or cloud sync yet
+              {user
+                ? "Saved to your account · Connection required to save changes"
+                : "Guest board · Saved in this browser"}
             </p>
           </section>
         )}
@@ -754,7 +839,6 @@ export default function GrowthBoard() {
             setNotice(
               `${name} timer started. You have ${minutes} ${minutes === 1 ? "minute" : "minutes"} to focus. You’ve got this!`,
             );
-            playSessionAlert("start");
           }}
           state={state}
           selected={session}
