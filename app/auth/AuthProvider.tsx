@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { clearAccountCaches } from "./account-cache";
 import type { User } from "@supabase/supabase-js";
 import { getSupabase, requireSupabase } from "../lib/supabase";
 
@@ -26,7 +27,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     if (!client) return;
     let alive = true;
     // INITIAL_SESSION includes restored sessions and PKCE email/OAuth callbacks.
-    const { data } = client.auth.onAuthStateChange((_event, session) => {
+    const { data } = client.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) {
+        try { clearAccountCaches(localStorage); } catch {
+          console.warn("Browser storage could not be cleared. Clear site data before sharing this device.");
+        }
+      }
       if (alive) setState({ user: session?.user ?? null, ready: true, configured: true, error: "" });
     });
     client.auth.getSession().then(({ error }) => {

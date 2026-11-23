@@ -19,7 +19,7 @@ function load(file, dependencies = {}, globals = {}) {
     source,
     {
       exports,
-      require: (name) => dependencies[name] ?? require(name),
+      require: (name) => dependencies[name] ?? (name === "./account-cache" ? accountCache : require(name)),
       Date,
       Set,
       Map,
@@ -37,6 +37,7 @@ function load(file, dependencies = {}, globals = {}) {
   );
   return exports;
 }
+const accountCache = load("app/auth/account-cache.ts");
 const timerPlan = load("extension/growth-focus/timer-plan.mjs");
 const model = load("app/growth-board/model.ts", { "../../extension/growth-focus/timer-plan.mjs": timerPlan });
 function browserStore() {
@@ -292,4 +293,36 @@ test('the first-name button reveals sign out only after opening the account menu
   assert.ok(renderToStaticMarkup(tree).includes('Sign out'));
   find(tree, node => node.props?.['aria-haspopup'] === 'menu').props.onClick();
   assert.equal(find(render(), node => node.props?.role === 'menu'), null);
+});
+
+
+test('sign-out clears all account boards while preserving guest data and preferences', () => {
+  const values = new Map([
+    ['progress.skills-tracker.v1.user.alice', 'private Alice board'],
+    ['progress.skills-tracker.v1.user.bob', 'private Bob board'],
+    ['progress.skills-tracker.v1', 'guest board'],
+    ['progress.skills-tracker.theme', 'dark'],
+  ]);
+  accountCache.clearAccountCaches({
+    get length() { return values.size; },
+    key: index => [...values.keys()][index] ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: key => values.delete(key),
+  });
+  assert.equal(values.has('progress.skills-tracker.v1.user.alice'), false);
+  assert.equal(values.has('progress.skills-tracker.v1.user.bob'), false);
+  assert.equal(values.get('progress.skills-tracker.v1'), 'guest board');
+  assert.equal(values.get('progress.skills-tracker.theme'), 'dark');
+  assert.ok(values.get(accountCache.ACCOUNT_CACHE_EPOCH));
+});
+
+test('a sign-out in another tab prevents an in-flight save from restoring private cache data', async () => {
+  const b = browserStore();
+  let complete;
+  b.store.configureTracker('alice', { save: () => new Promise(resolve => { complete = resolve; }) });
+  const pending = b.store.addSkill('Private skill');
+  b.localStorage.setItem(accountCache.ACCOUNT_CACHE_EPOCH, 'signed-out-in-another-tab');
+  complete();
+  await assert.rejects(pending, /signed out/);
+  assert.equal(b.localStorage.getItem(b.store.STORAGE_KEY), null);
 });

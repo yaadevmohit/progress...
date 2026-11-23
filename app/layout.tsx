@@ -1,5 +1,6 @@
 import { JobHuntProfileProvider } from "./job-hunt/ProfileContext";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Script from "next/script";
 import { TRACKER_THEME_SCRIPT } from "./growth-board/theme-config";
 import localFont from "next/font/local";
@@ -23,11 +24,12 @@ export const metadata: Metadata = {
   description: "app for tracking your learning progress",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -35,7 +37,7 @@ export default function RootLayout({
       className={`${nunito.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Script id="skills-tracker-theme" strategy="beforeInteractive">
+        <Script id="skills-tracker-theme" strategy="beforeInteractive" nonce={nonce}>
           {TRACKER_THEME_SCRIPT}
         </Script>
         <AuthProvider>

@@ -12,13 +12,14 @@
     "package:growth-focus": "node scripts/package-growth-focus.mjs",
     "test:growth-board-auth": "node --test tests/growth-board-auth.test.cjs",
     "seed:mock-users": "node scripts/seed-mock-users.mjs",
-    "test:mock-users": "node --test tests/mock-users.test.cjs"
+    "test:mock-users": "node --test tests/mock-users.test.cjs",
+    "test:security": "node --test tests/security.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",
     "lucide-react": "^1.16.0",
-    "next": "^16.2.6",
-    "postcss": "^8.5.15",
+    "next": "^16.4.6",
+    "postcss": "^8.5.33",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -28,7 +29,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "^16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
