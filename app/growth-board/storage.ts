@@ -89,10 +89,13 @@ async function mutate<T>(
     const raw = localStorage.getItem(STORAGE_KEY) ?? EMPTY;
     const parsed = decodeTracker(raw);
     if (parsed.error) throw new Error(parsed.error);
+    const cacheEpoch = key === GUEST_STORAGE_KEY ? null : localStorage.getItem("progress.skills-tracker.account-cache-epoch");
     const next = change(parsed.state);
     if (!decodeTracker(JSON.stringify(next.state)).error) {
       if (adapter) await adapter.save(next.state);
       if (key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your account changed. Reload your board before continuing.");
+      if (key !== GUEST_STORAGE_KEY && cacheEpoch !== localStorage.getItem("progress.skills-tracker.account-cache-epoch"))
+        throw new Error("You signed out while this change was saving. Your browser cache was cleared.");
       localStorage.setItem(key, JSON.stringify(next.state));
       window.dispatchEvent(new Event(CHANGE));
       return next.result;

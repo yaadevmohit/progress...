@@ -76,7 +76,12 @@ function Timer({
   onFinish: (id: string, early?: boolean) => Promise<void>;
 }) {
   const phase = currentPhase(timer, now ?? timer.startedAt);
-  const remaining = Math.max(0, Math.ceil(((phase?.endsAt ?? timer.endsAt) - (now ?? timer.startedAt)) / 1000)),
+  const remaining = Math.max(
+      0,
+      Math.ceil(
+        ((phase?.endsAt ?? timer.endsAt) - (now ?? timer.startedAt)) / 1000,
+      ),
+    ),
     elapsed = Math.max(0, Math.floor((now - timer.startedAt) / 1000));
   const ratio = remaining / (phase?.durationSeconds ?? timer.minutes * 60),
     [busy, setBusy] = useState(false);
@@ -97,12 +102,22 @@ function Timer({
       aria-label="Focus timer"
     >
       <div className="flex items-center justify-between gap-2">
-        <h2 className="truncate text-sm font-bold">{name}{timer.pomodoro ? " · Pomodoro" : ""}</h2>
+        <h2 className="truncate text-sm font-bold">
+          {name}
+          {timer.pomodoro ? " · Pomodoro" : ""}
+        </h2>
         <span className="text-xs font-semibold text-[var(--tracker-ink)]">
           {phase?.kind === "break" ? "On a break" : "In focus"}
         </span>
       </div>
-      {timer.pomodoro && <p className="mt-2 text-center text-xs text-[var(--tracker-muted)]">{phase?.kind === "break" ? `Break ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks}` : `Focus block ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks + 1}`} · {timer.minutes} min focus total</p>}
+      {timer.pomodoro && (
+        <p className="mt-2 text-center text-xs text-[var(--tracker-muted)]">
+          {phase?.kind === "break"
+            ? `Break ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks}`
+            : `Focus block ${(phase?.index ?? 0) + 1} / ${timer.pomodoro.breaks + 1}`}{" "}
+          · {timer.minutes} min focus total
+        </p>
+      )}
       <div className="relative mx-auto my-1 grid h-36 w-36 place-items-center">
         <svg
           viewBox="0 0 160 160"
@@ -149,7 +164,9 @@ function Timer({
           onClick={() => void action(false)}
           className="text-[var(--tracker-muted)]"
         >
-          {timer.pomodoro ? "End Pomodoro · keep completed blocks" : "Cancel timer"}
+          {timer.pomodoro
+            ? "End Pomodoro · keep completed blocks"
+            : "Cancel timer"}
         </button>
       </div>
     </section>
@@ -300,26 +317,34 @@ export default function GrowthBoard() {
       <ScrollHeader>
         <a
           href="/growth-board"
-          className="text-xl font-extrabold tracking-tight sm:text-2xl"
+          aria-label="Growth Board home"
+          className={`${styles.brand} text-xl font-extrabold tracking-tight sm:text-2xl`}
         >
-          Growth Board<span className="text-[var(--tracker-accent)]">.</span>
+          <span className={styles.brandFull}>
+            Growth Board<span className="text-[var(--tracker-accent)]">.</span>
+          </span>
+          <span className={styles.brandMark} aria-hidden="true">
+            gb
+          </span>
         </a>
         <div className={styles.headerActions}>
-          {!user && <button
-            aria-label="Export tracker backup"
-            onClick={() => {
-              try {
-                exportTracker();
-              } catch {
-                setError(
-                  "Couldn’t export your browser data. Check your browser storage settings.",
-                );
-              }
-            }}
-            className={styles.icon}
-          >
-            <Download size={18} />
-          </button>}
+          {!user && (
+            <button
+              aria-label="Export tracker backup"
+              onClick={() => {
+                try {
+                  exportTracker();
+                } catch {
+                  setError(
+                    "Couldn’t export your browser data. Check your browser storage settings.",
+                  );
+                }
+              }}
+              className={styles.icon}
+            >
+              <Download size={18} />
+            </button>
+          )}
           <button
             disabled={!canEdit}
             onClick={() => setSession("")}
@@ -333,7 +358,7 @@ export default function GrowthBoard() {
             />
             Log session
           </button>
-          <AccountButtons growth />
+          <AccountButtons growth compactMobile />
           <ThemeToggle />
         </div>
       </ScrollHeader>
@@ -403,9 +428,9 @@ export default function GrowthBoard() {
           {reminder && (
             <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--tracker-ink)]">
-                <strong>Take your progress with you.</strong> Create an account to
-                move your browser progress online automatically. Already have an
-                account? Sign in to open your saved board.
+                <strong>Take your progress with you.</strong> Create an account
+                to move your browser progress online automatically. Already have
+                an account? Sign in to open your saved board.
               </p>
               <button
                 onClick={() => void snooze()}
@@ -828,14 +853,12 @@ export default function GrowthBoard() {
                   ))}
               </ul>
             )}
-            <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
-              {user
-                ? "Saved to your account · Connection required to save changes"
-                : "Guest board · Saved in this browser"}
-            </p>
           </section>
         )}
       </main>
+      <footer className={styles.footer}>
+        © {new Date().getFullYear()} progress... All rights reserved.
+      </footer>
       {session !== null && (
         <SessionDialog
           onStarted={(name, minutes) => {
