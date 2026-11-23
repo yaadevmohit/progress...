@@ -305,7 +305,7 @@ export default function GrowthBoard() {
           Growth Board<span className="text-[var(--tracker-accent)]">.</span>
         </a>
         <div className={styles.headerActions}>
-          <button
+          {!user && <button
             aria-label="Export tracker backup"
             onClick={() => {
               try {
@@ -319,7 +319,7 @@ export default function GrowthBoard() {
             className={styles.icon}
           >
             <Download size={18} />
-          </button>
+          </button>}
           <button
             disabled={!canEdit}
             onClick={() => setSession("")}
@@ -333,8 +333,8 @@ export default function GrowthBoard() {
             />
             Log session
           </button>
-          <ThemeToggle />
           <AccountButtons growth />
+          <ThemeToggle />
         </div>
       </ScrollHeader>
       <main className={styles.main}>

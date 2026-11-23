@@ -1,14 +1,14 @@
 "use client";
 
 import { requireSupabase } from "../../lib/supabase";
+import styles from "./AuthDialog.module.css";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 export type AuthMode = "login" | "signup";
 
-const INPUT_CLASS = "mt-1.5 w-full rounded-xl border border-blue-100 bg-blue-50/40 px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-blue-500 focus:outline-2 focus:outline-blue-500/20";
-
-export default function AuthDialog({ mode, onModeChange, onClose }: {
+export default function AuthDialog({ mode, onModeChange, onClose, growth = false }: {
+  growth?: boolean;
   mode: AuthMode | null;
   onModeChange: (mode: AuthMode) => void;
   onClose: () => void;
@@ -76,19 +76,19 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
         setError("");
         onClose();
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-blue-100 bg-white p-5 text-neutral-900 shadow-xl backdrop:bg-black/45 sm:p-6 motion-safe:open:animate-[panel-enter_220ms_ease-out_both]"
+      className={`${styles.dialog} ${growth ? styles.growth : ""} p-5 sm:p-7 motion-safe:open:animate-[panel-enter_220ms_ease-out_both]`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold tracking-wider text-blue-600 uppercase">progress..</p>
-          <h2 id="auth-title" className="mt-2 text-2xl font-semibold tracking-tight text-blue-950">
+          <p className={styles.eyebrow}>{growth ? "Growth Board." : "progress.."}</p>
+          <h2 id="auth-title" className="mt-2 text-2xl font-extrabold tracking-tight">
             {signup ? "Create your account" : "Welcome back"}
           </h2>
-          <p id="auth-description" className="mt-1 text-sm text-neutral-500">
+          <p id="auth-description" className={`mt-1 text-sm ${styles.muted}`}>
             {signup ? "Make a little progress, every day." : "Log in to keep your progress going."}
           </p>
         </div>
-        <button type="button" disabled={busy} aria-label="Close" onClick={() => dialog.current?.close()} className="cursor-pointer rounded-lg p-1.5 text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600">
+        <button type="button" disabled={busy} aria-label="Close" onClick={() => dialog.current?.close()} className={styles.close}>
           <X size={20} aria-hidden="true" />
         </button>
       </div>
@@ -108,7 +108,7 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
             setError(error instanceof Error ? error.message : "Could not start Google sign-in.");
           } finally { setBusy(false); }
         }}
-        className="mt-6 flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-semibold text-blue-950 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600"
+        className={styles.provider}
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5">
           <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.98-4.3 2.98-7.36Z" />
@@ -119,43 +119,43 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
         {signup ? "Sign up with Google" : "Log in with Google"}
       </button>
 
-      <div className="my-5 flex items-center gap-3 text-xs text-neutral-400">
-        <span className="h-px flex-1 bg-blue-100" />
+      <div className={styles.divider}>
+        <span className={styles.rule} />
         or continue with email
-        <span className="h-px flex-1 bg-blue-100" />
+        <span className={styles.rule} />
       </div>
 
       <form key={mode} onSubmit={submit}><fieldset disabled={busy} className="space-y-4 disabled:opacity-60 motion-safe:animate-[panel-enter_180ms_ease-out_both]">
         {signup && (
-          <label className="block text-sm font-semibold text-blue-950">
+          <label className="block text-sm font-bold">
             Name
-            <input name="name" autoComplete="name" required placeholder="Your name" className={INPUT_CLASS} />
+            <input name="name" autoComplete="name" required placeholder="Your name" className={styles.input} />
           </label>
         )}
-        <label className="block text-sm font-semibold text-blue-950">
+        <label className="block text-sm font-bold">
           Email
-          <input name="email" type="email" autoComplete="email" required placeholder="you@example.com" className={INPUT_CLASS} />
+          <input name="email" type="email" autoComplete="email" required placeholder="you@example.com" className={styles.input} />
         </label>
-        <label className="block text-sm font-semibold text-blue-950">
+        <label className="block text-sm font-bold">
           Password
-          <input name="password" type="password" autoComplete={signup ? "new-password" : "current-password"} required minLength={signup ? 8 : undefined} placeholder={signup ? "At least 8 characters" : "Your password"} className={INPUT_CLASS} />
+          <input name="password" type="password" autoComplete={signup ? "new-password" : "current-password"} required minLength={signup ? 8 : undefined} placeholder={signup ? "At least 8 characters" : "Your password"} className={styles.input} />
         </label>
         {signup && (
-          <label className="block text-sm font-semibold text-blue-950">
+          <label className="block text-sm font-bold">
             Confirm password
-            <input name="confirmPassword" type="password" autoComplete="new-password" required placeholder="Re-enter your password" className={INPUT_CLASS} onChange={() => setError("")} />
+            <input name="confirmPassword" type="password" autoComplete="new-password" required placeholder="Re-enter your password" className={styles.input} onChange={() => setError("")} />
           </label>
         )}
-        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-        {message && <p role="status" className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{message}</p>}
-        <button type="submit" className="w-full cursor-pointer rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm shadow-blue-600/15 transition-all hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+        {error && <p role="alert" className={styles.error}>{error}</p>}
+        {message && <p role="status" className={styles.message}>{message}</p>}
+        <button type="submit" className={styles.submit}>
           {busy ? "Please wait…" : signup ? "Create account" : "Log in"}
         </button>
       </fieldset></form>
 
-      <p className="mt-5 text-center text-sm text-neutral-500">
-        {signup ? "Already have an account? " : "New to progress..? "}
-        <button type="button" disabled={busy} onClick={switchMode} className="cursor-pointer rounded font-semibold text-blue-600 hover:text-blue-800 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600">
+      <p className={`mt-5 text-center text-sm ${styles.muted}`}>
+        {signup ? "Already have an account? " : growth ? "New to Growth Board? " : "New to progress..? "}
+        <button type="button" disabled={busy} onClick={switchMode} className={styles.switchMode}>
           {signup ? "Log in" : "Sign up"}
         </button>
       </p>

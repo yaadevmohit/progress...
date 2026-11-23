@@ -22,6 +22,6 @@ export default function AccountButtons({ growth = false }: { growth?: boolean })
       <button disabled={!ready} aria-haspopup="dialog" className={`${base} flex items-center gap-2 ${growth ? "bg-[var(--tracker-ink)] text-[var(--tracker-bg)]" : "bg-neutral-900 text-white hover:bg-black"}`} onClick={() => setMode("signup")}>Sign up <MoveRight size={15} aria-hidden="true" /></button>
     </>}
     {error && <p role="alert" className="max-w-60 text-xs text-red-700">{error}</p>}
-    <AuthDialog mode={mode} onModeChange={setMode} onClose={() => setMode(null)} />
+    <AuthDialog growth={growth} mode={mode} onModeChange={setMode} onClose={() => setMode(null)} />
   </div>;
 }
