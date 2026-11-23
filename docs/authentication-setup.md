@@ -50,7 +50,7 @@ Sign-up stores the entered name in the Auth user record. If email confirmation i
 
 - Guests keep using the existing browser-only board without an account.
 - When an account gets its first database board, the app automatically transfers the current guest board (skills, resources, sessions, reminders, and active timer). This runs after authentication, including email confirmation and Google sign-up. The guest copy is removed only after the database confirms the save; newer guest edits from another tab are kept. A failed migration leaves local progress intact and offers a retry. Existing database boards are never overwritten by this automatic transfer. Empty existing boards can still use **Import into this account** explicitly.
-- Each account has a separate browser cache. The header shows a user icon and your first name; click it to open the sign-out menu. Signing out returns to the guest board, which starts empty after a successful transfer. Shared-device users should clear site data when they want to remove locally cached copies; caches are not encrypted.
+- Each account has a separate browser cache; signing out removes account board caches across tabs. The header shows a user icon and your first name; click it to open the sign-out menu. Signing out returns to the guest board, which starts empty after a successful transfer. Guest progress and theme preferences remain. If browser storage cannot be cleared, clear site data before sharing the device.
 - Signed-in edits save to the database before the displayed board changes. A network/database failure reports an error and leaves the last saved board intact. There is no offline write queue for accounts.
 - The subtle **Refresh board** icon below the active-skill count fetches changes from other devices. A stale tab/device cannot silently overwrite newer work: reload and repeat the edit after a conflict.
 - The homepage greeting follows the authenticated name, with an email username fallback. Guests see “Hello, learner”.
@@ -68,3 +68,5 @@ Sign-up stores the entered name in the Auth user record. If email confirmation i
 Automated tests cover local persistence, account separation, failed saves, switching accounts during an in-flight save, explicit guest imports, automatic first-board migration, failed migration retries, initialization conflicts, and concurrent guest edits. Live email, Google redirects, and deployed RLS require a configured Supabase project and must be checked after setup.
 
 References: [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys), [email sign-up](https://supabase.com/docs/reference/javascript/auth-signup), [OAuth sign-in](https://supabase.com/docs/reference/javascript/auth-signinwithoauth).
+
+For deployment checks, Supabase settings, and account-isolation testing, follow [the security setup guide](security-setup.md).
