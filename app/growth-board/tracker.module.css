@@ -391,16 +391,13 @@
   .dashboard {
     grid-template-columns: 1fr;
   }
-  .left {
-    order: 2;
-  }
   .ring {
     width: 120px;
     height: 120px;
     margin: 18px auto;
   }
   .skills {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
   .activity {
     padding: 16px;
