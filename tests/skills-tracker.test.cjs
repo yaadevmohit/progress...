@@ -648,43 +648,28 @@ test("skill editing saves description and resource edits atomically, preserving 
   assert.equal(b.read().skills[0].name, "Spanish conversation");
 });
 
-test("archiving and deleting cards frees slots but preserves historical sessions and totals", async () => {
-  const b = browserStore(),
-    s = await b.store.addSkill("Spanish", 0);
-  await b.store.logSession(s.id, 25, "2026-11-14", "Practice");
-  await b.store.deactivateSkill(s.id, "archived");
+test("archiving preserves history while deleting a skill removes all its practice", async () => {
+  const b = browserStore(), skill = await b.store.addSkill("Spanish", 0);
+  await b.store.logSession(skill.id, 25, "2026-11-14", "Practice");
+  await b.store.deactivateSkill(skill.id, "archived");
   assert.equal(model.activeSkills(b.read().skills).length, 0);
   assert.equal(b.read().sessions.length, 1);
-  const next = await b.store.addSkill("Guitar");
-  assert.equal(next.slot, 0);
-  assert.equal(model.decodeTracker(JSON.stringify(b.read())).error, null);
-  await b.store.restoreSkill(s.id);
+  assert.equal(model.practiceHistory(b.read())[0].durationSeconds, 1500);
+  const other = await b.store.addSkill("Guitar");
+  assert.equal(other.slot, 0);
+  await b.store.restoreSkill(skill.id);
   assert.equal(model.activeSkills(b.read().skills).length, 2);
-  assert.equal(
-    new Set(model.activeSkills(b.read().skills).map((s) => s.slot)).size,
-    2,
-  );
-  await b.store.deactivateSkill(s.id, "deleted");
-  assert.equal(
-    b.read().skills.find((item) => item.id === s.id).status,
-    "deleted",
-  );
-  assert.equal(model.mostPractised(b.read(), "2026-11-14").id, s.id);
-  assert.equal(
-    model.practiceBreakdown(model.skillStats(b.read(), "2026-11-14"))[0]
-      .seconds,
-    1500,
-  );
-  await assert.rejects(
-    b.store.logSession(s.id, 25, "2026-11-14", ""),
-    /Choose a skill/,
-  );
-  await assert.rejects(b.store.restoreSkill(s.id), /Only archived/);
-  await assert.rejects(
-    b.store.deactivateSkill(s.id, "archived"),
-    /already been deleted/,
-  );
+  await b.store.deactivateSkill(skill.id, "deleted");
+  assert.equal(b.read().skills.some((s) => s.id === skill.id), false);
+  assert.equal(b.read().sessions.length, 0);
+  assert.equal(model.mostPractised(b.read(), "2026-11-14"), null);
+  assert.equal(model.practiceHistory(b.read()).length, 0);
+  assert.equal(model.decodeTracker(JSON.stringify(b.read())).error, null);
+  await assert.rejects(b.store.logSession(skill.id, 25, "2026-11-14", ""), /Choose a skill/);
+  await assert.rejects(b.store.restoreSkill(skill.id), /Only archived/);
 });
+
+
 
 test("archive and delete cannot discard an active timer and restoring respects six active skills", async () => {
   const b = browserStore(),
@@ -703,44 +688,30 @@ test("archive and delete cannot discard an active timer and restoring respects s
   assert.equal(model.visibleSkillSlots(b.read().skills).length, 6);
 });
 
-test("deleting one or all session entries preserves time, streak and activity across reloads", async () => {
-  const b = browserStore(),
-    a = await b.store.addSkill("Spanish"),
-    other = await b.store.addSkill("Guitar");
-  await b.store.logSession(a.id, 25, "2026-11-13", "Private detailed notes");
-  await b.store.logSession(a.id, 45, "2026-11-14", "More notes");
+test("deleting sessions removes their time, streak and activity across reloads", async () => {
+  const b = browserStore(), skill = await b.store.addSkill("Spanish"), other = await b.store.addSkill("Guitar");
+  const first = await b.store.logSession(skill.id, 25, "2026-11-13", "Private notes");
+  const second = await b.store.logSession(skill.id, 45, "2026-11-14", "More notes");
   await b.store.logSession(other.id, 60, "2026-11-14", "Guitar");
-  const first = b.read().sessions.find((s) => s.skillId === a.id);
   await b.store.deleteSession(first.id);
   assert.equal(b.read().sessions.length, 2);
-  assert.equal(b.read().retainedPractice.length, 1);
-  assert.ok(!("notes" in b.read().retainedPractice[0]));
+  assert.equal(model.skillStats(b.read(), "2026-11-14").find((s) => s.id === skill.id).seconds, 2700);
+  assert.equal(model.currentStreak(model.practiceHistory(b.read()), "2026-11-14"), 1);
+  assert.equal(b.read().retainedPractice.length, 0);
+  assert.deepEqual(b.read().deletedSessionIds, [first.id]);
   await b.store.deleteSession(first.id);
-  assert.equal(b.read().retainedPractice.length, 1);
-  const remaining = b.read().sessions.find((s) => s.skillId === a.id);
-  await b.store.deleteSession(remaining.id, true);
+  assert.equal(b.read().deletedSessionIds.length, 1);
+  await b.store.deleteSession(second.id, true);
   const decoded = model.decodeTracker(JSON.stringify(b.read()));
   assert.equal(decoded.error, null);
-  const state = decoded.state;
-  assert.equal(state.sessions.length, 1);
-  assert.equal(state.sessions[0].skillId, other.id);
-  assert.equal(
-    model.skillStats(state, "2026-11-14").find((s) => s.id === a.id).seconds,
-    4200,
-  );
-  assert.equal(
-    model.currentStreak(model.practiceHistory(state), "2026-11-14"),
-    2,
-  );
-  assert.equal(model.focusSkill(state, a.id, "2026-11-14").sessions.length, 0);
-  assert.equal(model.focusSkill(state, a.id, "2026-11-14").activity.length, 2);
-  assert.equal(
-    model
-      .weeklyActivity(model.practiceHistory(state), "2026-11-14")
-      .weeks.reduce((sum, w) => sum + w.seconds, 0),
-    7800,
-  );
+  assert.equal(decoded.state.sessions.length, 1);
+  assert.equal(decoded.state.sessions[0].skillId, other.id);
+  assert.equal(model.skillStats(decoded.state, "2026-11-14").find((s) => s.id === skill.id).seconds, 0);
+  assert.equal(model.focusSkill(decoded.state, skill.id, "2026-11-14").activity.length, 0);
+  assert.equal(model.weeklyActivity(model.practiceHistory(decoded.state), "2026-11-14").weeks.reduce((n,w) => n+w.seconds,0), 3600);
 });
+
+
 
 test("delete all sessions only removes the chosen skill's entries and rejects duplicated time credits", async () => {
   const b = browserStore(),
@@ -753,7 +724,7 @@ test("delete all sessions only removes the chosen skill's entries and rejects du
   assert.equal(await b.store.deleteSession(id, true), 2);
   assert.equal(b.read().sessions.length, 1);
   const invalid = b.read();
-  invalid.retainedPractice.push(invalid.retainedPractice[0]);
+  invalid.deletedSessionIds.push(invalid.deletedSessionIds[0]);
   assert.ok(model.decodeTracker(JSON.stringify(invalid)).error);
 });
 
@@ -869,17 +840,13 @@ test("subskills work beyond six root slots and validate sibling names and parent
   await store.restoreSkill(child.id);
   await store.restoreSkill(grandchild.id);
   await store.deleteSession(read().sessions[0].id);
-  assert.equal(
-    model.focusSkill(read(), roots[0].id, "2026-11-14").skill.seconds,
-    1500,
-  );
+  assert.equal(model.focusSkill(read(), roots[0].id, "2026-11-14").skill.seconds, 0);
   await store.deactivateSkill(child.id, "deleted");
-  assert.equal(
-    read().skills.find((s) => s.id === grandchild.id).status,
-    "deleted",
-  );
+  assert.equal(read().skills.some((s) => s.id === grandchild.id || s.id === child.id), false);
   assert.equal(model.decodeTracker(JSON.stringify(read())).error, null);
 });
+
+
 
 function extensionBridge(browser) {
   const responses = [];
@@ -959,14 +926,14 @@ test('Pomodoro persists each block at break start, survives repeated saves and p
   assert.equal(b.read().sessions.reduce((n,s) => n+s.durationSeconds, 0), 1800);
   assert.equal(b.read().activeTimer, null);
 });
-test('Pomodoro recovery credits exactly 60 focus minutes after 75 elapsed, even when a saved block was deleted', async () => {
+test('Pomodoro recovery never restores the time of a deleted focus block', async () => {
   const b = browserStore(); const skill = await b.store.addSkill('Piano');
   const timer = await b.store.startTimer(skill.id, 60, '', { breaks: 3, breakMinutes: 5 });
   b.advance(15 * 60000); await b.store.finishTimer(timer.id);
   await b.store.deleteSession(b.read().sessions[0].id);
   b.advance(60 * 60000); await b.store.finishTimer(timer.id); await b.store.finishTimer(timer.id);
   assert.equal(b.read().sessions.length, 3);
-  assert.equal(model.practiceHistory(b.read()).reduce((n,s) => n+s.durationSeconds, 0), 3600);
+  assert.equal(model.practiceHistory(b.read()).reduce((n,s) => n+s.durationSeconds, 0), 2700);
   assert.equal(b.read().activeTimer, null);
 });
 test('Pomodoro quit discards an unfinished block and rejects corrupt persisted plans without overwriting', async () => {
@@ -992,4 +959,75 @@ test('extension bridge acknowledges Pomodoro block credits and final run complet
   assert.equal(completed.result.creditedSeconds, 3600);
   assert.equal((await bridge.send('finish', { timerId })).result.creditedSeconds, 3600);
   assert.equal(b.read().sessions.length, 4);
+});
+
+test("moving a main skill retains its subtree and resources and rolls practice up exactly once", async () => {
+  const b = browserStore();
+  const parent = await b.store.addSkill("Programming");
+  const moved = await b.store.addSkill("JavaScript");
+  const child = await b.store.addSkill("Async", undefined, "", moved.id);
+  await b.store.addResource(moved.id, "Guide", "https://example.com");
+  await b.store.logSession(parent.id, 10, "2026-11-14", "");
+  await b.store.logSession(moved.id, 20, "2026-11-14", "");
+  await b.store.logSession(child.id, 30, "2026-11-14", "");
+  const sessions = JSON.stringify(b.read().sessions);
+  await b.store.moveSkill(moved.id, parent.id);
+  const state = b.read();
+  assert.equal(state.skills.find((s) => s.id === moved.id).parentId, parent.id);
+  assert.equal(state.skills.find((s) => s.id === child.id).parentId, moved.id);
+  assert.equal(state.skills.find((s) => s.id === moved.id).resources[0].name, "Guide");
+  assert.equal(JSON.stringify(state.sessions), sessions);
+  assert.equal(model.rootSkills(model.activeSkills(state.skills)).length, 1);
+  const stats = model.skillStats(state, "2026-11-14");
+  assert.equal(stats.find((s) => s.id === parent.id).seconds, 3600);
+  assert.equal(stats.find((s) => s.id === moved.id).seconds, 3000);
+  assert.equal(model.skillDistribution(stats, null).reduce((n,s) => n+s.seconds,0), 3600);
+  assert.equal(model.decodeTracker(JSON.stringify(state)).error, null);
+});
+test("moving validates cycles, sibling names, archived targets, and missing skills without partial writes", async () => {
+  const b = browserStore(); const a = await b.store.addSkill("A"), target = await b.store.addSkill("B");
+  const child = await b.store.addSkill("Child", undefined, "", a.id);
+  await b.store.addSkill("A", undefined, "", target.id);
+  const before = JSON.stringify(b.read());
+  await assert.rejects(b.store.moveSkill(a.id, a.id), /itself/);
+  await assert.rejects(b.store.moveSkill(a.id, child.id), /subskills/);
+  await assert.rejects(b.store.moveSkill(a.id, target.id), /name/);
+  await assert.rejects(b.store.moveSkill("missing", target.id), /active skill/);
+  assert.equal(JSON.stringify(b.read()), before);
+  await b.store.deactivateSkill(target.id, "archived");
+  await assert.rejects(b.store.moveSkill(a.id, target.id), /active parent/);
+});
+test("deleting a branch removes descendants and sessions but preserves unrelated progress", async () => {
+  const b = browserStore(); const root = await b.store.addSkill("Root"), other = await b.store.addSkill("Other");
+  const child = await b.store.addSkill("Child", undefined, "", root.id);
+  const leaf = await b.store.addSkill("Leaf", undefined, "", child.id);
+  for (const s of [root, child, leaf, other]) await b.store.logSession(s.id, 10, "2026-11-14", "Private notes");
+  await b.store.deactivateSkill(child.id, "deleted");
+  assert.equal(b.read().skills.length, 2);
+  assert.equal(b.read().sessions.length, 2);
+  assert.equal(model.skillStats(b.read(), "2026-11-14").find((s) => s.id === root.id).seconds, 600);
+  await b.store.deactivateSkill(root.id, "deleted");
+  assert.equal(b.read().skills.length, 1);
+  assert.equal(b.read().skills[0].id, other.id);
+  assert.equal(b.read().sessions[0].skillId, other.id);
+  assert.equal(model.practiceHistory(b.read()).reduce((n,s) => n+s.durationSeconds,0), 600);
+});
+test("legacy deleted cards and retained credits migrate out of history while archived practice remains", () => {
+  const removed = { ...skill("removed", 0), status: "deleted" };
+  const descendant = { ...skill("descendant", 1), parentId: removed.id, status: "deleted" };
+  const archived = { ...skill("archived", 2), status: "archived" };
+  const credit = session("2026-11-12", archived.id, 600);
+  const raw = JSON.stringify({ ...model.EMPTY_STATE, skills: [removed, descendant, archived],
+    sessions: [session("2026-11-13", removed.id), session("2026-11-13", descendant.id), session("2026-11-14", archived.id)],
+    retainedPractice: [credit] });
+  const decoded = model.decodeTracker(raw);
+  assert.equal(decoded.error, null);
+  assert.equal(decoded.state.skills.length, 1);
+  assert.equal(decoded.state.skills[0].id, archived.id);
+  assert.equal(decoded.state.sessions.length, 1);
+  assert.equal(decoded.state.retainedPractice.length, 0);
+  assert.equal(decoded.state.deletedSessionIds.length, 3);
+  assert.equal(model.practiceHistory(decoded.state).reduce((n,s) => n+s.durationSeconds,0), 1500);
+  assert.equal(model.currentStreak(model.practiceHistory(decoded.state), "2026-11-14"), 1);
+  assert.equal(model.decodeTracker(JSON.stringify(decoded.state)).error, null);
 });

@@ -53,7 +53,7 @@ The app remains the authority for skill validation, overlap prevention and recor
 2. The display computes remaining seconds from `endsAt - Date.now()`. It does not count interval ticks, so tab throttling and closing the new-tab page do not reset elapsed time.
 3. `chrome.alarms` schedules the deadline and a minute-level recovery check. Startup/install listeners recreate the watchdog and restore session rules.
 4. At expiry, the worker removes blocking first and asks the app to finish that timer. The app records its planned duration and completion date using the original ID.
-5. `finishTimer` already checks both sessions and retained practice credits before adding that ID. If the app’s own timer UI finished first, the bridge acknowledges the existing record. Retry does not duplicate practice or resurrect a deleted session row.
+5. `finishTimer` already checks both existing sessions and anonymous deleted-session IDs before adding that ID. If the app’s own timer UI finished first, the bridge acknowledges the existing record. Retry does not duplicate practice or resurrect a deleted session row.
 6. If the app/server cannot be reached, the expired timer remains persisted as a pending completion. Blocking ends, and the worker retries on subsequent checks and manual sync. The UI says that saving is pending; it never claims success before acknowledgement.
 7. The worker serializes its commands to avoid two new tabs starting overlapping sessions. Each app mutation is separately protected by the app’s Web Lock.
 8. For a simple timer, Cancel removes the app timer without adding time. Pomodoro cancellation retains completed focus blocks as described below. Cancel requires reaching the board; an unavailable board may prevent immediate cancellation, but network rules still expire at the original deadline. If the app cancelled or removed the timer, reconciliation does not manufacture a replacement session.
@@ -127,7 +127,7 @@ A run has `breaks + 1` focus blocks with a break between blocks, never an extra 
 
 Elapsed time is 75 minutes; credited practice is exactly 60 minutes. If the division is uneven, integer seconds are distributed across focus blocks so that the sum remains exact.
 
-Each focus block becomes an independent timer session as its break begins; the final block saves at completion. The board’s existing session totals, skill totals, activity and streak calculations include these records normally. IDs use the run ID and focus-block index. Concurrent app/extension writes, reconnects and deleted-session retained credits therefore cannot duplicate a block.
+Each focus block becomes an independent timer session as its break begins; the final block saves at completion. The board’s existing session totals, skill totals, activity and streak calculations include these records normally. IDs use the run ID and focus-block index. Concurrent app/extension writes, reconnects and anonymous deleted-session IDs therefore cannot duplicate a block.
 
 **End Pomodoro** keeps completed blocks and drops unfinished focus. Ending in the second break of the example retains two 15-minute records (30 minutes). Ending during a later focus block still preserves those earlier records. Breaks are never recorded as practice. Cancellation itself settles any focus boundary crossed immediately before the click, preventing a race from discarding a just-completed block.
 
@@ -144,3 +144,12 @@ Pomodoro validation: 39 app/storage/bridge tests and 17 extension tests passed (
 The extension uses a flat workspace with a single type family, a daily focus field, and adjacent timer/task columns. The clock and date are small supporting information. Search, links, weather, countdowns and notes expand on demand. Decorative landscapes, glass panels, automatic color rotation and default motivational quotes have been removed. Existing theme keys and locally saved data continue to work; custom photos and quotes remain available in Settings. Timer, Pomodoro, sound, blocking and Growth Board synchronization logic are unchanged.
 
 The redesign was checked in an isolated Chromium profile at 1440 px and 390 px widths. The page loaded without manifest/runtime errors, had no horizontal overflow at mobile width, and passed interactive checks for task persistence, Pomodoro preview, Focus view and Settings. ESLint and all 17 extension tests passed, and the distributable ZIP was rebuilt.
+
+
+## Moving and deleting skills
+
+In a skill card’s **Edit** dialog, choose **Move under another skill** (or **Move to another parent skill** for a subskill), select an active parent, and confirm. The moved skill keeps its ID, resources, sessions, and descendants. Its practice contributes to the new parent once, and a former main skill frees a main-card slot. Moves into the skill itself or its descendants, archived targets, and duplicate sibling names are rejected.
+
+**Delete session** now removes that session’s practice time from totals, streaks, activity, and charts. **Delete skill and history** permanently removes the chosen skill, all descendant subskills, resources, and associated sessions. **Archive skill** still preserves history and progress for later restoration. An active timer must be finished or cancelled before its skill branch can be deleted.
+
+Old deleted cards and legacy retained practice credits are excluded when saved boards are decoded. Subsequent changes persist the cleaned state. Only anonymous deleted-session IDs remain as retry markers, without skill names, notes, durations, or dates, so Pomodoro retries cannot restore deleted practice. Archived skills and unrelated sessions retain their history.

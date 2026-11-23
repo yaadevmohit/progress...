@@ -56,8 +56,8 @@ export default function DeleteSessionButton({
         >
           <p className="font-bold">{skillName}</p>
           <p className="mt-2 text-sm leading-relaxed text-[var(--tracker-muted)]">
-            The session entry will be removed. Your earned time, streaks and
-            activity history will stay unchanged.
+            This permanently removes the session and its practice time. Totals,
+            streaks, charts, and activity history will be recalculated.
           </p>
           {count > 1 && (
             <label className="mt-5 flex items-start gap-3 text-sm font-semibold">

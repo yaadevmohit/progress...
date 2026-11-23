@@ -257,7 +257,7 @@ export async function finishTimer(timerId: string, early = false) {
       state: {
         ...state,
         activeTimer: null,
-        sessions: [...state.sessions, ...(state.retainedPractice ?? [])].some(
+        sessions: (state.deletedSessionIds ?? []).includes(timer.id) || state.sessions.some(
           (s) => s.id === timer.id,
         )
           ? state.sessions
@@ -270,7 +270,7 @@ export async function finishTimer(timerId: string, early = false) {
 // Persist every completed focus block at its own boundary. Deterministic IDs
 // make app/extension races and offline recovery safe, including deleted rows.
 function settlePomodoro(state: TrackerState, timer: ActiveTimer, now: number, stop = false) {
-  const ids = new Set([...state.sessions, ...(state.retainedPractice ?? [])].map((s) => s.id));
+  const ids = new Set([...state.sessions.map((s) => s.id), ...(state.deletedSessionIds ?? [])]);
   const added: LearningSession[] = [];
   for (const phase of timerPhases(timer)) {
     if (phase.kind !== "focus" || phase.endsAt > now || ids.has(phase.key)) continue;
@@ -445,6 +445,23 @@ export async function updateSkill(
     };
   });
 }
+export async function moveSkill(skillId: string, parentId: string) {
+  return mutate((state) => {
+    const skill = state.skills.find((s) => s.id === skillId);
+    const parent = state.skills.find((s) => s.id === parentId);
+    if (!skill || !isActiveSkill(skill)) throw new Error("Choose an active skill to move.");
+    if (!parent || !isActiveSkill(parent)) throw new Error("Choose an active parent skill.");
+    if (subtreeIds(state.skills, skillId).has(parentId))
+      throw new Error("A skill cannot be moved under itself or one of its subskills.");
+    if (skill.parentId === parentId) return { state, result: null };
+    const siblings = activeSkills(state.skills).filter((s) => s.parentId === parentId);
+    if (siblings.some((s) => s.name.toLowerCase() === skill.name.toLowerCase()))
+      throw new Error("This parent already has a subskill with that name. Rename the skill first.");
+    const slot = (parent.slot + 1 + siblings.length) % MAX_SKILLS;
+    return { state: { ...state, skills: state.skills.map((s) => s.id === skillId
+      ? { ...s, parentId, slot, color: COLORS[slot] } : s) }, result: null };
+  });
+}
 export async function deactivateSkill(
   skillId: string,
   status: "archived" | "deleted",
@@ -457,6 +474,15 @@ export async function deactivateSkill(
     const affected = subtreeIds(state.skills, skillId);
     if (state.activeTimer && affected.has(state.activeTimer.skillId))
       throw new Error("Finish or cancel the timer for this skill first.");
+    if (status === "deleted") {
+      const removedIds = state.sessions.filter((s) => affected.has(s.skillId)).map((s) => s.id);
+      return { state: { ...state,
+        skills: state.skills.filter((s) => !affected.has(s.id)),
+        sessions: state.sessions.filter((s) => !affected.has(s.skillId)),
+        retainedPractice: [],
+        deletedSessionIds: [...new Set([...(state.deletedSessionIds ?? []), ...removedIds])],
+      }, result: null };
+    }
     return {
       state: {
         ...state,
@@ -520,19 +546,12 @@ export async function deleteSession(sessionId: string, allForSkill = false) {
       allForSkill ? s.skillId === entry.skillId : s.id === sessionId,
     );
     const ids = new Set(removed.map((s) => s.id));
-    const credits = removed.map(
-      ({ id, skillId, durationSeconds, activityDate }) => ({
-        id,
-        skillId,
-        durationSeconds,
-        activityDate,
-      }),
-    );
     return {
       state: {
         ...state,
         sessions: state.sessions.filter((s) => !ids.has(s.id)),
-        retainedPractice: [...(state.retainedPractice ?? []), ...credits],
+        retainedPractice: [],
+        deletedSessionIds: [...new Set([...(state.deletedSessionIds ?? []), ...ids])],
       },
       result: removed.length,
     };
