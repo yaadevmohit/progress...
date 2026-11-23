@@ -25,11 +25,11 @@ To distribute a ZIP locally, run `npm run package:growth-focus`. Extract `build/
 - Saved quick links, add/remove controls, and Google web search.
 - City-based current weather in Celsius and a five-day high/low forecast from Open-Meteo; cached display while offline. Location permission is not required.
 - Named event countdowns, including today and elapsed dates.
-- Three illustrated landscape color themes; daily theme and original quote rotation unless personalized. Users can upload one local JPG/PNG/WebP background (up to 3 MB) and write a custom quote/mantra.
+- Three flat color themes (Paper, Ink, and Slate), with Paper as the stable default. Users can upload one local JPG/PNG/WebP background (up to 3 MB) and optionally display a custom quote. Quotes are hidden when no custom text is set.
 - Three local synthesized ambient sound textures. Sound is opt-in, stops when the tab closes, and plays per tab.
 - Responsive layout, keyboard-accessible controls, visible focus outlines, reduced-motion support and status messages.
 
-This is not a complete reproduction of Momentum or Momentum Plus. Its brand, proprietary photos and quotes are not copied. Calendar account integration, third-party task-manager integration, AI chat, cross-device accounts, a curated photographic feed, photo favorites, and advanced air quality/hourly weather are not implemented. Those require additional implementation and, for connected services, separate authorization. The local illustrated backgrounds and uploaded photo are distinct from a licensed daily-photo service.
+This is not a complete reproduction of Momentum or Momentum Plus. Its brand, proprietary photos and quotes are not copied. Calendar account integration, third-party task-manager integration, AI chat, cross-device accounts, a curated photographic feed, photo favorites, and advanced air quality/hourly weather are not implemented. Those require additional implementation and, for connected services, separate authorization. Uploaded backgrounds are local user photos; no licensed daily-photo service is included.
 
 ## How the connection works
 
@@ -137,3 +137,10 @@ Distinct sounds mark **start**, **break**, **resume**, and **final completion**.
 
 
 Pomodoro validation: 39 app/storage/bridge tests and 17 extension tests passed (56 total). An accelerated disposable Chromium test advanced only the test app/worker JavaScript clocks across the 60 + 3 × 5 schedule with the dashboard closed. It verified one saved block at every break boundary, four records summing to 3,600 seconds, offscreen audio playback acknowledgements for start/break/resume/finish, and removal of blocking rules at the final deadline. No production/user data or system clock was changed.
+
+
+## New-tab layout (v1.2)
+
+The extension uses a flat workspace with a single type family, a daily focus field, and adjacent timer/task columns. The clock and date are small supporting information. Search, links, weather, countdowns and notes expand on demand. Decorative landscapes, glass panels, automatic color rotation and default motivational quotes have been removed. Existing theme keys and locally saved data continue to work; custom photos and quotes remain available in Settings. Timer, Pomodoro, sound, blocking and Growth Board synchronization logic are unchanged.
+
+The redesign was checked in an isolated Chromium profile at 1440 px and 390 px widths. The page loaded without manifest/runtime errors, had no horizontal overflow at mobile width, and passed interactive checks for task persistence, Pomodoro preview, Focus view and Settings. ESLint and all 17 extension tests passed, and the distributable ZIP was rebuilt.

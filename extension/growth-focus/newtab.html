@@ -1,26 +1,62 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A little room to learn · Growth Focus</title><link rel="stylesheet" href="newtab.css"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Growth Focus</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
 <body>
-  <div class="landscape" aria-hidden="true"><div class="sun"></div><div class="ridge far"></div><div class="ridge near"></div><div class="grain"></div></div>
-  <header><a class="brand" href="#"><span class="brand-icon">✳</span> growth focus<span class="edition">A LITTLE ROOM TO LEARN</span></a><div class="header-actions"><button id="zen">Focus view</button><button id="settings-open" aria-label="Open settings">Settings ↗</button></div></header>
-  <main>
-    <section class="greeting"><p class="eyebrow" id="date"></p><div class="clock" id="clock" aria-label="Current time"></div><h1 id="greeting">Make room for yourself.</h1><form id="intention-form"><label for="intention">What would you like to do today?</label><div class="intention-row"><input id="intention" maxlength="200" placeholder="One thing that matters…" autocomplete="off"><button aria-label="Save today's intention">↵</button></div></form><label class="done-line"><input type="checkbox" id="intention-done"> I showed up for my intention</label></section>
-    <section class="workspace" aria-label="Your daily workspace">
-      <article class="panel focus-panel"><div class="panel-top"><span class="eyebrow">01 / MAKE PROGRESS</span><button id="sync" class="text-button">Sync board ↻</button></div><h2>Your next small step.</h2><p class="muted">Pick a skill. Protect a little time. Grow.</p><form id="timer-form"><label for="timer-mode">TIMER TYPE</label><select id="timer-mode"><option value="simple">Focus timer</option><option value="pomodoro">Pomodoro</option></select><label for="skill">GROWTH BOARD SKILL</label><select id="skill" required><option value="">Connect your board in Settings</option></select><div class="timer-inputs"><label><span id="minutes-label">MINUTES</span><input id="minutes" type="number" min="1" max="1440" step="1" value="25" required></label><label>SESSION INTENTION<input id="session-notes" maxlength="2000" placeholder="What will you practise?"></label></div><fieldset id="pomodoro-fields" hidden><div class="timer-inputs"><label>NUMBER OF BREAKS<input id="breaks" type="number" min="1" max="24" step="1" value="3"></label><label>BREAK DURATION (MIN)<input id="break-minutes" type="number" min="1" max="60" step="1" value="5"></label></div><p id="pomodoro-summary" class="muted small"></p></fieldset><button class="primary" id="start">Start focus session <span>↗</span></button></form><div id="active-session" hidden><p id="active-skill"></p><div id="countdown" role="timer">25:00</div><p id="pomodoro-progress" class="small"></p><p class="muted" id="timer-caption">Your time is protected.</p><button id="cancel">Cancel without saving</button></div><p class="shield" id="protection">◇ Social, entertainment & adult sites blocked during focus</p><p id="sync-status" class="muted small"></p><p id="sound-status" class="muted small"></p><p id="break-status" class="small"></p><p id="session-result" role="status" class="small"></p></article>
-      <article class="panel tasks-panel"><div class="panel-top"><span class="eyebrow">02 / CLEAR YOUR MIND</span><span id="task-count" class="muted small">0 done</span></div><h2>A little less to carry.</h2><form id="task-form" class="inline-form"><input id="task-input" maxlength="200" placeholder="Add a to-do…" aria-label="New task" required><button aria-label="Add task">+</button></form><ul id="tasks"></ul><details><summary>Notes & ideas</summary><textarea id="notes" maxlength="20000" placeholder="Leave a thought here…" aria-label="Notes"></textarea></details></article>
-      <aside class="side-stack"><article class="panel weather-panel"><span class="eyebrow">OUTSIDE YOUR WINDOW</span><p id="weather" class="weather">A breath of fresh air.</p><form id="weather-form" class="inline-form"><input id="city" placeholder="City for weather" aria-label="City" maxlength="100" required><button aria-label="Get weather">↗</button></form><p id="forecast" class="muted small"></p></article><article class="panel"><span class="eyebrow">SOMETHING TO LOOK FORWARD TO</span><p id="event-countdown" class="event-countdown">Make time for what matters.</p><details><summary>Set a countdown</summary><form id="event-form"><label>Event<input id="event-name" maxlength="80" required></label><label>Date<input id="event-date" type="date" required></label><button>Save countdown</button></form><button id="event-clear" class="text-button">Clear countdown</button></details></article></aside>
-    </section>
-    <section class="utility-row"><form id="search-form" class="search"><span aria-hidden="true">⌕</span><input id="search" placeholder="Search the web, then come back to yourself" aria-label="Search the web" required><button>↗</button></form><button id="sound">♫ Ambient sound: off</button></section>
-    <nav id="links" aria-label="Quick links"></nav><details class="links-editor"><summary>Add a quick link</summary><form id="link-form" class="inline-form"><input id="link-name" maxlength="40" placeholder="Label" aria-label="Link label" required><input id="link-url" type="url" placeholder="https://…" aria-label="Link URL" required><button>Add</button></form></details>
-  </main>
-  <footer><span>ONE SESSION AT A TIME.</span><p id="quote"></p><button id="next-scene">Change scene ↻</button></footer>
+  <div class="landscape" aria-hidden="true"></div>
+  <div class="page">
+    <header>
+      <a class="brand" href="#" aria-label="Growth Focus home"><span class="brand-mark" aria-hidden="true"></span>Growth Focus</a>
+      <div class="header-actions"><button id="zen" aria-pressed="false">Focus view</button><button id="settings-open">Settings</button></div>
+    </header>
+    <main>
+      <section class="greeting" aria-label="Today's focus">
+        <div class="day-heading"><h1 id="greeting">Good morning.</h1><div class="date-time"><span id="date"></span><span id="clock" aria-label="Current time"></span></div></div>
+        <form id="intention-form">
+          <label for="intention">What will you work on today?</label>
+          <div class="intention-row"><input id="intention" maxlength="200" placeholder="Set your focus for today" autocomplete="off"><button aria-label="Save today's focus">Save</button></div>
+        </form>
+        <label class="done-line"><input type="checkbox" id="intention-done"> Mark as done</label>
+      </section>
+      <section class="workspace" aria-label="Focus timer and tasks">
+        <article class="focus-panel">
+          <div class="section-heading"><h2>Focus timer</h2><button id="sync" class="text-button">Sync skills</button></div>
+          <form id="timer-form">
+            <div class="timer-selects"><label>Timer type<select id="timer-mode"><option value="simple">Uninterrupted</option><option value="pomodoro">Pomodoro</option></select></label><label>Skill<select id="skill" required><option value="">Connect Growth Board</option></select></label></div>
+            <label class="duration-label"><span id="minutes-label">Duration</span><span class="duration-entry"><input id="minutes" type="number" min="1" max="1440" step="1" value="25" required><span>minutes</span></span></label>
+            <fieldset id="pomodoro-fields" hidden><legend>Breaks</legend><div class="timer-inputs"><label>Number of breaks<input id="breaks" type="number" min="1" max="24" step="1" value="3"></label><label>Minutes per break<input id="break-minutes" type="number" min="1" max="60" step="1" value="5"></label></div><p id="pomodoro-summary" class="muted small"></p></fieldset>
+            <label class="session-note">Session note <span class="optional">optional</span><input id="session-notes" maxlength="2000" placeholder="What are you practising?"></label>
+            <button class="primary" id="start">Start session <span aria-hidden="true">→</span></button>
+          </form>
+          <div id="active-session" hidden><p id="active-skill"></p><div id="countdown" role="timer">25:00</div><p id="pomodoro-progress" class="small"></p><p id="timer-caption" class="muted"></p><button id="cancel" class="text-button">Cancel session</button></div>
+          <div class="session-status"><p id="protection" class="shield"></p><p id="sync-status" class="muted small"></p><p id="sound-status" class="muted small"></p><p id="break-status" class="small"></p><p id="session-result" role="status" class="small"></p></div>
+        </article>
+        <aside class="tasks-panel">
+          <div class="section-heading"><h2>Tasks</h2><span id="task-count" class="muted small">0 / 0</span></div>
+          <form id="task-form" class="inline-form"><input id="task-input" maxlength="200" placeholder="Add a task" aria-label="New task" required><button aria-label="Add task">+</button></form><ul id="tasks"></ul>
+          <details class="notes-drawer"><summary>Notes</summary><textarea id="notes" maxlength="20000" placeholder="Write a note…" aria-label="Notes"></textarea></details>
+        </aside>
+      </section>
+      <section class="tools" aria-label="More tools">
+        <details class="tool"><summary>Search</summary><form id="search-form" class="inline-form"><input id="search" placeholder="Search the web" aria-label="Search the web" required><button>Search</button></form></details>
+        <details class="tool"><summary>Links</summary><nav id="links" aria-label="Quick links"></nav><details class="links-editor"><summary>Add a link</summary><form id="link-form" class="inline-form"><input id="link-name" maxlength="40" placeholder="Name" aria-label="Link label" required><input id="link-url" type="url" placeholder="https://…" aria-label="Link URL" required><button>Add</button></form></details></details>
+        <details class="tool"><summary>Weather</summary><p id="weather" class="weather">Choose a city.</p><form id="weather-form" class="inline-form"><input id="city" placeholder="City" aria-label="City" maxlength="100" required><button>Show weather</button></form><p id="forecast" class="muted small"></p></details>
+        <details class="tool"><summary>Countdown</summary><p id="event-countdown" class="event-countdown">No countdown set.</p><form id="event-form"><label>Event<input id="event-name" maxlength="80" required></label><label>Date<input id="event-date" type="date" required></label><button>Save countdown</button></form><button id="event-clear" class="text-button">Remove countdown</button></details>
+        <button id="sound" class="sound-button" aria-pressed="false">Ambient sound: off</button>
+      </section>
+    </main>
+    <footer><p id="quote" hidden></p><span class="footer-note">Saved on this device</span><button id="next-scene" class="text-button">Change theme</button></footer>
+  </div>
   <div id="message" role="status" aria-live="polite" hidden></div>
-  <dialog id="settings"><form method="dialog" class="dialog-header"><h2>Make this space yours.</h2><button aria-label="Close settings">✕</button></form><p class="muted">A calm start. A deliberate next step.</p>
+  <dialog id="settings"><form method="dialog" class="dialog-header"><h2>Settings</h2><button aria-label="Close settings">✕</button></form><p class="muted">Growth Board, blocking, and appearance.</p>
     <form id="connect-form"><label>Growth Board address<input id="app-url" type="url" placeholder="http://localhost:3000" required></label><button class="primary">Connect Growth Board</button><p class="small muted">Use the same address and Chrome profile where your skills are saved. Connecting grants access only to this origin.</p></form>
     <p id="incognito-status" class="small"></p><p class="small muted">To protect private windows: open chrome://extensions → Growth Focus → Details → Allow in Incognito. Chrome keeps its own incognito new-tab page. Blocking still applies during focus.</p>
-    <form id="block-form"><h3>Protect your focus</h3><label class="check"><input type="checkbox" name="category" value="social" checked> Social media</label><label class="check"><input type="checkbox" name="category" value="entertainment" checked> YouTube & entertainment</label><label class="check"><input type="checkbox" name="category" value="adult" checked> Known adult websites</label><label>Additional domains, one per line<textarea id="custom-domains" rows="4" placeholder="example.com"></textarea></label><p class="small muted">Domains include all subdomains. The built-in list is a starting point, not a complete adult-content filter. Add missing domains here. Changes apply to the next session.</p><button>Save blocking preferences</button></form>
-    <form id="personal-form"><h3>Your daily dashboard</h3><label>Your name<input id="name" maxlength="40" placeholder="Learner"></label><label>Daily quote or mantra<textarea id="custom-quote" maxlength="300" placeholder="Leave blank for a daily thought"></textarea></label><label>Theme<select id="theme"><option value="forest">Forest</option><option value="dusk">Dusk</option><option value="ocean">Ocean</option></select></label><label>Ambient scene<select id="sound-scene"><option value="rain">Soft rain</option><option value="wind">Gentle wind</option><option value="stream">Quiet stream</option></select></label><label class="check"><input type="checkbox" id="format24"> 24-hour clock</label><button>Save dashboard</button></form>
-    <label>Your own background photo<input id="photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small muted">Stored only on this device. Maximum 3 MB.</p><button id="clear-photo">Use illustrated landscape</button><p class="small muted">Dashboard data and private-window changes share this Chrome profile. No account, analytics, browsing-history collection, or cloud sync. Weather sends your chosen city to Open-Meteo. Search opens Google.</p>
+    <form id="block-form"><h3>Site blocking</h3><label class="check"><input type="checkbox" name="category" value="social" checked> Social media</label><label class="check"><input type="checkbox" name="category" value="entertainment" checked> YouTube & entertainment</label><label class="check"><input type="checkbox" name="category" value="adult" checked> Known adult websites</label><label>Additional domains, one per line<textarea id="custom-domains" rows="4" placeholder="example.com"></textarea></label><p class="small muted">Domains include all subdomains. The built-in list is a starting point, not a complete adult-content filter. Add missing domains here. Changes apply to the next session.</p><button>Save blocking preferences</button></form>
+    <form id="personal-form"><h3>Appearance</h3><label>Your name<input id="name" maxlength="40" placeholder="Learner"></label><label>Quote (optional)<textarea id="custom-quote" maxlength="300" placeholder="Leave blank to hide"></textarea></label><label>Theme<select id="theme"><option value="forest">Paper</option><option value="dusk">Ink</option><option value="ocean">Slate</option></select></label><label>Ambient scene<select id="sound-scene"><option value="rain">Soft rain</option><option value="wind">Gentle wind</option><option value="stream">Quiet stream</option></select></label><label class="check"><input type="checkbox" id="format24"> 24-hour clock</label><button>Save dashboard</button></form>
+    <label>Your own background photo<input id="photo" type="file" accept="image/jpeg,image/png,image/webp"></label><p class="small muted">Stored only on this device. Maximum 3 MB.</p><button id="clear-photo">Remove background photo</button><p class="small muted">Dashboard data and private-window changes share this Chrome profile. No account, analytics, browsing-history collection, or cloud sync. Weather sends your chosen city to Open-Meteo. Search opens Google.</p>
   </dialog><script type="module" src="newtab.js"></script>
 </body></html>

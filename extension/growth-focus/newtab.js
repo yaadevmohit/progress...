@@ -39,34 +39,36 @@ function duration(seconds) {
 function tick() {
   const now = new Date();
   $('clock').textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: !dashboard.format24 });
-  $('date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+  $('date').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
-  $('greeting').textContent = `${greeting}${dashboard.name ? `, ${dashboard.name}` : ''}. Make room to grow.`;
+  $('greeting').textContent = `${greeting}${dashboard.name ? `, ${dashboard.name}` : ''}.`;
+  document.body.classList.toggle('session-running', !!focus.timer && focus.timer.endsAt > Date.now());
   if (focus.timer) {
     const phase = currentPhase(focus.timer);
     const seconds = Math.max(0, Math.ceil(((phase?.endsAt ?? focus.timer.endsAt) - Date.now()) / 1000));
     $('countdown').textContent = duration(seconds);
-    $('timer-caption').textContent = seconds ? (phase?.kind === 'break' ? 'Take a break. Your completed focus block is being saved; distractions stay blocked.' : 'Your time is protected. One thing at a time.') : 'Session finished. Waiting for Growth Board to confirm the save…';
+    $('timer-caption').textContent = seconds ? (phase?.kind === 'break' ? 'Break time. Completed focus blocks save to Growth Board.' : 'Focus session in progress.') : 'Session finished. Waiting for Growth Board to confirm the save…';
     $('pomodoro-progress').textContent = focus.timer.pomodoro ? `${phase?.kind === 'break' ? 'Break' : 'Focus block'} ${(phase?.index ?? focus.timer.pomodoro.breaks) + 1} / ${phase?.kind === 'break' ? focus.timer.pomodoro.breaks : focus.timer.pomodoro.breaks + 1} · ${duration(focus.creditedSeconds ?? 0)} focus saved / ${focus.timer.minutes} min planned` : '';
     $('cancel').textContent = focus.timer.pomodoro ? 'End Pomodoro · keep completed blocks' : 'Cancel without saving';
     $('cancel').hidden = !seconds;
   }
-  $('break-status').textContent = focus.breakEndsAt > Date.now() && !focus.timer ? `Take a breath. Break: ${duration(Math.ceil((focus.breakEndsAt - Date.now()) / 1000))}` : '';
+  $('break-status').textContent = focus.breakEndsAt > Date.now() && !focus.timer ? `Break: ${duration(Math.ceil((focus.breakEndsAt - Date.now()) / 1000))}` : '';
   if (dashboard.event?.date) {
     const target = new Date(`${dashboard.event.date}T00:00:00`);
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const days = Math.round((target - today) / 86400000);
     $('event-countdown').textContent = `${dashboard.event.name} · ${days === 0 ? 'today' : days > 0 ? `${days} day${days === 1 ? '' : 's'} to go` : `${-days} day${days === -1 ? '' : 's'} ago`}`;
-  } else $('event-countdown').textContent = 'Make time for what matters.';
+  } else $('event-countdown').textContent = 'No countdown set.';
   if (document.activeElement !== $('intention')) {
     $('intention').value = dashboard.intention?.day === day() ? dashboard.intention.text : '';
     $('intention-done').checked = dashboard.intention?.day === day() && !!dashboard.intention.done;
+    document.body.classList.toggle('intention-complete', $('intention-done').checked);
   }
 }
 function renderFocus() {
   const selected = $('skill').value;
   $('skill').replaceChildren();
-  if (!focus.skills?.length) $('skill').append(new Option('Add skills in Growth Board, then sync', ''));
+  if (!focus.skills?.length) $('skill').append(new Option(focus.settings?.appUrl ? 'Add a skill in Growth Board' : 'Connect in Settings', ''));
   for (const skill of focus.skills ?? []) $('skill').append(new Option(`${skill.parentId ? '↳ ' : ''}${skill.name}`, skill.id));
   if ([...$('skill').options].some((option) => option.value === selected)) $('skill').value = selected;
   $('timer-form').hidden = !!focus.timer;
@@ -74,30 +76,21 @@ function renderFocus() {
   $('active-skill').textContent = focus.skills?.find((s) => s.id === focus.timer?.skillId)?.name ?? 'Your learning session';
   $('start').disabled = !focus.skills?.length;
   $('sync-status').textContent = focus.syncError ? `Sync needs attention: ${focus.syncError} Completed time will retry automatically.`
-    : focus.settings?.appUrl ? 'Connected · Sessions save to this browser’s Growth Board.' : 'Connect Growth Board in Settings to load your skills.';
+    : focus.settings?.appUrl ? 'Connected to Growth Board.' : 'Connect Growth Board in Settings to load your skills.';
   $('session-result').textContent = focus.lastResult ?? '';
   $('sound-status').textContent = focus.soundError ?? '';
   $('incognito-status').textContent = focus.incognitoAllowed ? '✓ Incognito protection is enabled.' : '○ Incognito protection is not enabled.';
   const groups = focus.settings?.categories ?? ['social', 'entertainment', 'adult'];
-  $('protection').textContent = `◇ Focus protection: ${groups.length ? groups.join(', ') : 'custom list only'}${focus.settings?.customDomains?.length ? ` + ${focus.settings.customDomains.length} custom domains` : ''}`;
+  $('protection').textContent = `Blocks during focus: ${groups.length ? groups.join(', ') : 'custom list only'}${focus.settings?.customDomains?.length ? ` + ${focus.settings.customDomains.length} custom domains` : ''}`;
   tick();
 }
-const quotes = [
-  '“A little room, a little time, a little further than yesterday.”',
-  '“Let your attention follow what you want to become.”',
-  '“Small steps count. Especially the ones nobody sees.”',
-  '“You don’t need a perfect day to make a little progress.”',
-  '“The next chapter begins with the next small step.”',
-  '“Give yourself the time you keep giving everything else.”',
-  '“Today, choose presence over hurry.”',
-];
 function renderDashboard() {
   tick();
-  const dayIndex = Math.floor(Date.now() / 86400000);
-  document.body.dataset.theme = dashboard.theme ?? ['forest', 'dusk', 'ocean'][dayIndex % 3];
+  document.body.dataset.theme = dashboard.theme ?? 'forest';
   document.body.classList.toggle('photo', !!dashboard.photo);
   document.querySelector('.landscape').style.backgroundImage = dashboard.photo ? `url("${dashboard.photo}")` : '';
-  $('quote').textContent = dashboard.quote || quotes[dayIndex % quotes.length];
+  $('quote').textContent = dashboard.quote ?? '';
+  $('quote').hidden = !dashboard.quote;
   const tasks = dashboard.tasks ?? [];
   $('task-count').textContent = `${tasks.filter((t) => t.done).length} / ${tasks.length} done`;
   $('tasks').replaceChildren();
@@ -118,7 +111,7 @@ function renderDashboard() {
   }
   $('links').replaceChildren();
   if (focus.settings?.appUrl) {
-    const board = document.createElement('a'); board.href = focus.settings.appUrl; board.textContent = '↗ Growth Board'; $('links').append(board);
+    const board = document.createElement('a'); board.href = focus.settings.appUrl; board.textContent = 'Growth Board'; $('links').append(board);
   }
   for (const link of dashboard.links ?? []) {
     const wrap = document.createElement('span');
@@ -148,13 +141,14 @@ action('connect-form', 'submit', async () => {
   if (!granted) throw new Error('App access was not granted. Your current connection is unchanged.');
   await request('connect', { appUrl }); renderDashboard();
   if (focus.syncError) throw new Error(focus.syncError);
-  toast('Growth Board connected. Your skills are ready.');
+  toast('Growth Board connected.');
 });
 action('sync', 'click', async () => { await request('sync'); renderDashboard(); if (focus.syncError) throw new Error(focus.syncError); toast('Board synced.'); });
 function renderPomodoroPlan() {
   const pomodoro = $('timer-mode').value === 'pomodoro';
   $('pomodoro-fields').hidden = !pomodoro;
-  $('minutes-label').textContent = pomodoro ? 'TOTAL FOCUS MINUTES' : 'MINUTES';
+  $('minutes-label').textContent = pomodoro ? 'Total focus duration' : 'Duration';
+  $('minutes').style.width = `${Math.max(2.5, String($('minutes').value).length + .5)}ch`;
   $('breaks').required = pomodoro;
   $('break-minutes').required = pomodoro;
   $('breaks').disabled = !pomodoro;
@@ -163,7 +157,7 @@ function renderPomodoroPlan() {
   try {
     validatePomodoro(minutes, { breaks, breakMinutes });
     const blocks = timerPhases({ id: 'preview', minutes, startedAt: 0, endsAt: (minutes + breaks * breakMinutes) * 60000, pomodoro: { breaks, breakMinutes } }).filter((p) => p.kind === 'focus');
-    $('pomodoro-summary').textContent = `${minutes} min focus + ${breaks * breakMinutes} min breaks = ${minutes + breaks * breakMinutes} min elapsed. ${blocks.length} focus blocks (${blocks.map((b) => duration(b.durationSeconds)).join(' / ')}), saved individually. Break time never counts.`;
+    $('pomodoro-summary').textContent = `${blocks.length} focus blocks of ${duration(blocks[0].durationSeconds)}${blocks.some((b) => b.durationSeconds !== blocks[0].durationSeconds) ? ' approx.' : ''}. ${minutes + breaks * breakMinutes} min total, ${minutes} min credited.`;
   } catch (error) { $('pomodoro-summary').textContent = error.message; }
 }
 for (const id of ['timer-mode', 'minutes', 'breaks', 'break-minutes']) $(id).addEventListener('input', renderPomodoroPlan);
@@ -189,7 +183,7 @@ action('personal-form', 'submit', async () => {
 });
 action('intention-form', 'submit', async () => {
   await edit((d) => { d.intention = { day: day(), text: $('intention').value.trim(), done: false }; });
-  toast('A little intention for today.');
+  toast('Focus saved.');
 });
 action('intention-done', 'change', async () => {
   await edit((d) => { d.intention = { day: day(), text: $('intention').value.trim(), done: $('intention-done').checked }; });
@@ -217,7 +211,7 @@ action('link-form', 'submit', async () => {
   $('link-form').reset(); renderDashboard();
 });
 action('search-form', 'submit', async () => { location.href = `https://www.google.com/search?q=${encodeURIComponent($('search').value)}`; });
-action('zen', 'click', async () => { document.body.classList.toggle('zen'); $('zen').textContent = document.body.classList.contains('zen') ? 'Full dashboard' : 'Focus view'; });
+action('zen', 'click', async () => { document.body.classList.toggle('zen'); $('zen').textContent = document.body.classList.contains('zen') ? 'Show tasks' : 'Focus view'; $('zen').setAttribute('aria-pressed', String(document.body.classList.contains('zen'))); });
 action('next-scene', 'click', async () => {
   const themes = ['forest', 'dusk', 'ocean'];
   await edit((d) => { d.theme = themes[(themes.indexOf(document.body.dataset.theme) + 1) % 3]; }); renderDashboard();
@@ -234,7 +228,7 @@ action('clear-photo', 'click', async () => { await edit((d) => { delete d.photo;
 
 let audio;
 action('sound', 'click', async () => {
-  if (audio) { await audio.close(); audio = null; $('sound').textContent = '♫ Ambient sound: off'; return; }
+  if (audio) { await audio.close(); audio = null; $('sound').setAttribute('aria-pressed', 'false'); $('sound').textContent = 'Ambient sound: off'; return; }
   const context = new AudioContext();
   const buffer = context.createBuffer(1, context.sampleRate * 4, context.sampleRate);
   const data = buffer.getChannelData(0);
@@ -245,11 +239,11 @@ action('sound', 'click', async () => {
   filter.frequency.value = { rain: 1800, wind: 500, stream: 3000 }[dashboard.soundScene ?? 'rain'];
   const gain = context.createGain(); gain.gain.value = .35;
   source.connect(filter).connect(gain).connect(context.destination); source.start();
-  await context.resume(); audio = context; $('sound').textContent = `♫ ${dashboard.soundScene ?? 'rain'} · click to stop`;
+  await context.resume(); audio = context; $('sound').setAttribute('aria-pressed', 'true'); $('sound').textContent = `${dashboard.soundScene ?? 'rain'} · stop sound`;
 });
 const weatherLabel = (code) => code === 0 ? 'Clear skies' : code <= 3 ? 'Cloudy' : code <= 48 ? 'Misty' : code <= 67 ? 'Rain' : code <= 77 ? 'Snow' : code <= 82 ? 'Showers' : code <= 86 ? 'Snow showers' : 'Thunderstorms';
 async function weather(city) {
-  $('weather').textContent = 'Looking outside…';
+  $('weather').textContent = 'Loading weather…';
   const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`, { signal: AbortSignal.timeout(10000) });
   if (!geoResponse.ok) throw new Error('Weather location service unavailable.');
   const place = (await geoResponse.json()).results?.[0];
