@@ -131,3 +131,165 @@ test('greeting uses account names with safe username and guest fallbacks', () =>
   assert.equal(displayName({ user_metadata: {}, email: 'mohit@example.com' }), 'mohit');
   assert.equal(displayName(null), 'learner');
 });
+
+const { loadAccountBoard } = load('app/growth-board/account-board.ts', { './model': model });
+function guestStorage(raw) {
+  let value = raw;
+  return {
+    getItem: () => value,
+    removeItem: () => { value = null; },
+    set: next => { value = next; },
+  };
+}
+
+test('first account load transfers the complete guest board exactly once', async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill('Piano');
+  await b.store.logSession(skill.id, 25, '2026-11-14', 'Practised scales');
+  await b.store.startTimer(skill.id, 15, 'Next practice');
+  const guest = b.read();
+  const storage = guestStorage(JSON.stringify(guest));
+  let saved = null;
+  let writes = 0;
+  const database = {
+    read: async () => ({ data: saved, error: null }),
+    create: async state => {
+      writes++;
+      saved = { board: state, revision: 1 };
+      return { data: 1, error: null };
+    },
+  };
+  const loaded = await loadAccountBoard(database, storage);
+  assert.equal(JSON.stringify(loaded.state), JSON.stringify(guest));
+  assert.equal(loaded.revision, 1);
+  assert.equal(storage.getItem(), null);
+  await loadAccountBoard(database, storage);
+  assert.equal(writes, 1);
+});
+
+test('existing account boards are never replaced by guest progress', async () => {
+  const b = browserStore();
+  await b.store.addSkill('Guest piano');
+  const raw = JSON.stringify(b.read());
+  const storage = guestStorage(raw);
+  const loaded = await loadAccountBoard({
+    read: async () => ({ data: { board: model.EMPTY_STATE, revision: 4 }, error: null }),
+    create: async () => { assert.fail('must not overwrite an existing account'); },
+  }, storage);
+  assert.equal(loaded.state.skills.length, 0);
+  assert.equal(loaded.revision, 4);
+  assert.equal(storage.getItem(), raw);
+});
+
+test('failed migration preserves guest progress and retries successfully', async () => {
+  const raw = JSON.stringify(model.EMPTY_STATE);
+  const storage = guestStorage(raw);
+  let offline = true;
+  const database = {
+    read: async () => ({ data: null, error: null }),
+    create: async () => offline
+      ? { data: null, error: { message: 'Offline' } }
+      : { data: 1, error: null },
+  };
+  await assert.rejects(loadAccountBoard(database, storage), /Offline/);
+  assert.equal(storage.getItem(), raw);
+  offline = false;
+  assert.equal((await loadAccountBoard(database, storage)).revision, 1);
+  assert.equal(storage.getItem(), null);
+});
+
+test('simultaneous account initialization reloads the winning board without overwriting it', async () => {
+  const storage = guestStorage(JSON.stringify(model.EMPTY_STATE));
+  let reads = 0;
+  const loaded = await loadAccountBoard({
+    read: async () => ({ data: ++reads === 1 ? null : { board: model.EMPTY_STATE, revision: 2 }, error: null }),
+    create: async () => ({ data: null, error: { code: '40001', message: 'Conflict' } }),
+  }, storage);
+  assert.equal(loaded.revision, 2);
+  assert.equal(reads, 2);
+  assert.notEqual(storage.getItem(), null);
+});
+
+test('migration retains guest edits made in another tab before the save completes', async () => {
+  const raw = JSON.stringify(model.EMPTY_STATE);
+  const storage = guestStorage(raw);
+  const newer = JSON.stringify({ ...model.EMPTY_STATE, reminderDismissedAt: 123 });
+  await loadAccountBoard({
+    read: async () => ({ data: null, error: null }),
+    create: async () => { storage.set(newer); return { data: 1, error: null }; },
+  }, storage);
+  assert.equal(storage.getItem(), newer);
+});
+
+test('invalid guest data and unconfirmed database saves never discard the source', async () => {
+  const invalid = guestStorage('broken json');
+  await assert.rejects(loadAccountBoard({
+    read: async () => ({ data: null, error: null }),
+    create: async () => { assert.fail('must validate before uploading'); },
+  }, invalid));
+  assert.equal(invalid.getItem(), 'broken json');
+  const raw = JSON.stringify(model.EMPTY_STATE);
+  const storage = guestStorage(raw);
+  await assert.rejects(loadAccountBoard({
+    read: async () => ({ data: null, error: null }),
+    create: async () => ({ data: null, error: null }),
+  }, storage), /did not confirm/);
+  assert.equal(storage.getItem(), raw);
+});
+
+test('account menu uses only the first name on every screen size', () => {
+  const { firstName } = load('app/auth/AuthProvider.tsx', { '../lib/supabase': {} });
+  assert.equal(firstName({ user_metadata: { display_name: '  Mohit  yadav  ' } }), 'Mohit');
+  assert.equal(firstName({ user_metadata: { full_name: 'Google User' } }), 'Google');
+  assert.equal(firstName({ user_metadata: {}, email: 'mohit@example.com' }), 'mohit');
+});
+
+test('the first-name button reveals sign out only after opening the account menu', () => {
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const { firstName } = load('app/auth/AuthProvider.tsx', { '../lib/supabase': {} });
+  const state = [];
+  let cursor = 0;
+  const AccountButtons = load('app/auth/AccountButtons.tsx', {
+    react: {
+      ...React,
+      useState: initial => {
+        const key = cursor++;
+        if (!(key in state)) state[key] = initial;
+        return [state[key], next => { state[key] = typeof next === 'function' ? next(state[key]) : next; }];
+      },
+      useEffect: () => {},
+      useRef: () => ({ current: null }),
+      useId: () => 'account-menu',
+    },
+    './AuthProvider': {
+      useAuth: () => ({ user: { id: 'alice', user_metadata: { display_name: 'Mohit Yadav' } }, ready: true }),
+      firstName,
+    },
+    '../ui/components/AuthDialog': { default: () => null },
+  }).default;
+  const render = () => { cursor = 0; return AccountButtons({ growth: true }); };
+  function find(node, predicate) {
+    if (!node || typeof node !== 'object') return null;
+    if (predicate(node)) return node;
+    for (const child of React.Children.toArray(node.props?.children)) {
+      const found = find(child, predicate);
+      if (found) return found;
+    }
+    return null;
+  }
+  let tree = render();
+  const trigger = find(tree, node => node.props?.['aria-haspopup'] === 'menu');
+  assert.ok(trigger);
+  assert.equal(trigger.props['aria-expanded'], false);
+  const closed = renderToStaticMarkup(tree);
+  assert.ok(closed.includes('Mohit'));
+  assert.ok(!closed.includes('Yadav'));
+  assert.ok(!closed.includes('Sign out'));
+  trigger.props.onClick();
+  tree = render();
+  assert.ok(find(tree, node => node.props?.role === 'menu'));
+  assert.ok(renderToStaticMarkup(tree).includes('Sign out'));
+  find(tree, node => node.props?.['aria-haspopup'] === 'menu').props.onClick();
+  assert.equal(find(render(), node => node.props?.role === 'menu'), null);
+});

@@ -49,10 +49,10 @@ Sign-up stores the entered name in the Auth user record. If email confirmation i
 ## Account and browser behavior
 
 - Guests keep using the existing browser-only board without an account.
-- Signing in opens that user's database board. It never silently attaches a guest board to an account. An empty account board offers **Import into this account** when browser progress exists; the guest copy remains intact.
-- Each account has a separate browser cache. Signing out returns to the guest board. Shared-device users should clear site data when they want to remove locally cached copies; caches are not encrypted.
+- When an account gets its first database board, the app automatically transfers the current guest board (skills, resources, sessions, reminders, and active timer). This runs after authentication, including email confirmation and Google sign-up. The guest copy is removed only after the database confirms the save; newer guest edits from another tab are kept. A failed migration leaves local progress intact and offers a retry. Existing database boards are never overwritten by this automatic transfer. Empty existing boards can still use **Import into this account** explicitly.
+- Each account has a separate browser cache. The header shows a user icon and your first name; click it to open the sign-out menu. Signing out returns to the guest board, which starts empty after a successful transfer. Shared-device users should clear site data when they want to remove locally cached copies; caches are not encrypted.
 - Signed-in edits save to the database before the displayed board changes. A network/database failure reports an error and leaves the last saved board intact. There is no offline write queue for accounts.
-- **Reload board** fetches changes from other devices. A stale tab/device cannot silently overwrite newer work: reload and repeat the edit after a conflict.
+- The subtle **Refresh board** icon below the active-skill count fetches changes from other devices. A stale tab/device cannot silently overwrite newer work: reload and repeat the edit after a conflict.
 - The homepage greeting follows the authenticated name, with an email username fallback. Guests see “Hello, learner”.
 - The Growth Focus extension uses the board active in its connected app tab. Signed-in extension timer operations also require a working database connection. The extension does not receive Supabase credentials.
 - If credentials are missing, guest mode works and the auth dialog explains that account services need configuration. If the migration is missing or access fails, the account board shows a retryable error instead of loading another user's or guest's data.
@@ -65,6 +65,6 @@ Sign-up stores the entered name in the Auth user record. If email confirmation i
 4. Sign out; create a second account and verify it cannot see the first account's board. Check the `growth_boards` table in Supabase.
 5. Test Google sign-in after enabling the provider. Test a stale-tab save and a network failure; both should show errors without replacing saved data.
 
-Automated tests cover local persistence, account separation, failed saves, switching accounts during an in-flight save, and explicit guest imports. Live email, Google redirects, and deployed RLS require a configured Supabase project and must be checked after setup.
+Automated tests cover local persistence, account separation, failed saves, switching accounts during an in-flight save, explicit guest imports, automatic first-board migration, failed migration retries, initialization conflicts, and concurrent guest edits. Live email, Google redirects, and deployed RLS require a configured Supabase project and must be checked after setup.
 
 References: [Supabase API keys](https://supabase.com/docs/guides/getting-started/api-keys), [email sign-up](https://supabase.com/docs/reference/javascript/auth-signup), [OAuth sign-in](https://supabase.com/docs/reference/javascript/auth-signinwithoauth).

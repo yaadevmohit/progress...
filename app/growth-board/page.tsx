@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Plus, X } from "lucide-react";
 import AccountButtons from "../auth/AccountButtons";
 import { displayName, useAuth } from "../auth/AuthProvider";
-import { BoardSyncStatus } from "./BoardDataProvider";
+import { BoardRefreshButton, BoardSyncStatus } from "./BoardDataProvider";
 import SkillComposer from "./SkillComposer";
 import SkillActions from "./SkillActions";
 import DeleteSessionButton from "./DeleteSessionButton";
@@ -403,10 +403,9 @@ export default function GrowthBoard() {
           {reminder && (
             <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--tracker-ink)]">
-                <strong>Take your progress with you.</strong> Sign in or create
-                an account to save a board online. Your guest progress stays in
-                this browser; you can import it into an empty account board.
-                Export a backup to keep a copy.
+                <strong>Take your progress with you.</strong> Create an account to
+                move your browser progress online automatically. Already have an
+                account? Sign in to open your saved board.
               </p>
               <button
                 onClick={() => void snooze()}
@@ -582,10 +581,11 @@ export default function GrowthBoard() {
                 />
               ) : (
                 <>
-                  <div className="flex items-center justify-end">
+                  <div className="flex flex-col items-end">
                     <span className="text-xs font-semibold text-[var(--tracker-muted)]">
                       {learningSkills.length} / {MAX_SKILLS}
                     </span>
+                    <BoardRefreshButton />
                   </div>
                   <div className={styles.skills}>
                     {visibleSkillSlots(state.skills).map((slot) => {
