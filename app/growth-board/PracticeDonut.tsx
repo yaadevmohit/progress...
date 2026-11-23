@@ -1,7 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import { durationLabel, practiceBreakdown } from "./model";
-import { donutPath } from "./donut-path";
+import { donutPath, piePath } from "./donut-path";
 import styles from "./tracker.module.css";
 export default function PracticeDonut({
   skills,
@@ -33,6 +33,7 @@ export default function PracticeDonut({
         className={styles.donut}
       >
         <circle
+          className={styles.donutSlice}
           cx="50"
           cy="50"
           r="43"
@@ -41,12 +42,19 @@ export default function PracticeDonut({
           strokeWidth="12"
           aria-hidden="true"
         />
+        <circle
+          cx="50"
+          cy="50"
+          r="49"
+          fill="var(--tracker-chart-empty)"
+          className={styles.pieSlice}
+          aria-hidden="true"
+        />
         {segments.map((skill) => {
           const percentage = Math.round(skill.percent * 10) / 10;
           return (
-            <path
+            <g
               key={skill.id}
-              d={donutPath(skill.offset, skill.percent)}
               fillRule="evenodd"
               fill={skill.color}
               role="button"
@@ -70,7 +78,16 @@ export default function PracticeDonut({
                 opacity: highlight && highlight !== skill.id ? 0.35 : 1,
               }}
               className={styles.donutSegment}
-            />
+            >
+              <path
+                className={styles.donutSlice}
+                d={donutPath(skill.offset, skill.percent)}
+              />
+              <path
+                className={styles.pieSlice}
+                d={piePath(skill.offset, skill.percent)}
+              />
+            </g>
           );
         })}
       </svg>
@@ -79,6 +96,7 @@ export default function PracticeDonut({
           {durationLabel(total)}
         </span>
         <span className="mt-1 text-xs font-semibold text-[var(--tracker-muted)]">
+          <span className={styles.mobileFocusLabel}>Focus time · </span>
           {label}
         </span>
       </div>

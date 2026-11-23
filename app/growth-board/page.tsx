@@ -339,7 +339,7 @@ export default function GrowthBoard() {
       </ScrollHeader>
       <main className={styles.main}>
         <div className={styles.stage}>
-          <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <div className={styles.dashboardHeading}>
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Hello, {displayName(user)}
