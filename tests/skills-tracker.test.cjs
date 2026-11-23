@@ -1031,3 +1031,148 @@ test("legacy deleted cards and retained credits migrate out of history while arc
   assert.equal(model.currentStreak(model.practiceHistory(decoded.state), "2026-11-14"), 1);
   assert.equal(model.decodeTracker(JSON.stringify(decoded.state)).error, null);
 });
+
+const reporting = load("app/growth-board/reporting.ts", { "./model": model });
+test("dashboard defaults to inclusive rolling seven days with month, year and leap boundaries", () => {
+  for (const [today, period, start] of [
+    ["2026-11-23", "weekly", "2026-11-17"],
+    ["2026-01-03", "weekly", "2025-12-28"],
+    ["2024-03-01", "weekly", "2024-02-24"],
+    ["2026-03-01", "monthly", "2026-01-31"],
+    ["2024-03-01", "annual", "2023-03-03"],
+  ]) {
+    const range = reporting.reportingRange(today, period);
+    assert.equal(range.start, start);
+    assert.equal(range.end, today);
+  }
+});
+test("reporting scopes every time calculation and branch without mutating saved history or timers", () => {
+  const root = skill("root", 0),
+    child = { ...skill("child", 1), parentId: root.id };
+  const other = skill("other", 2);
+  const state = {
+    ...model.EMPTY_STATE,
+    skills: [root, child, other],
+    sessions: [
+      session("2026-11-16", "root", 3600),
+      session("2026-11-17", "child", 600),
+      session("2026-11-23", "other", 1200),
+      session("2026-11-24", "child", 600),
+    ],
+    retainedPractice: [
+      session("2026-11-20", "child", 300),
+      session("2026-11-01", "child", 600),
+    ],
+    activeTimer: { id: "running" },
+  };
+  const before = JSON.stringify(state);
+  const scoped = reporting.reportingState(
+    state,
+    reporting.reportingRange("2026-11-23", "weekly"),
+  );
+  assert.equal(scoped.sessions.length, 2);
+  assert.equal(scoped.retainedPractice.length, 1);
+  assert.equal(scoped.activeTimer, state.activeTimer);
+  assert.equal(scoped.skills, state.skills);
+  const stats = model.skillStats(scoped, "2026-11-23");
+  assert.equal(stats.find((s) => s.id === "root").seconds, 600);
+  assert.equal(model.mostPractised(scoped, "2026-11-23").id, "other");
+  const focused = model.focusSkill(scoped, "root", "2026-11-23");
+  assert.equal(focused.sessions.length, 1);
+  assert.equal(focused.activity.length, 1);
+  assert.equal(
+    model.skillDistribution(stats, null).reduce((n, s) => n + s.seconds, 0),
+    1800,
+  );
+  assert.equal(
+    model.skillDistribution(stats, "root").reduce((n, s) => n + s.seconds, 0),
+    600,
+  );
+  assert.equal(JSON.stringify(state), before);
+  const monthly = reporting.reportingState(
+    state,
+    reporting.reportingRange("2026-11-23", "monthly"),
+  );
+  assert.equal(
+    model.focusSkill(monthly, "root", "2026-11-23").skill.seconds,
+    4200,
+  );
+});
+test("activity buckets partition the selected period exactly and agree with the donut, excluding practice outside the range", () => {
+  for (const period of ["weekly", "monthly", "annual"]) {
+    const range = reporting.reportingRange("2026-01-03", period);
+    const entries = [];
+    let date = range.start;
+    while (date <= range.end) {
+      entries.push(session(date, "a", 60));
+      date = model.shiftDay(date, 1);
+    }
+    const outliers = [
+      session(model.shiftDay(range.start, -1), "a", 3600),
+      session(model.shiftDay(range.end, 1), "a", 3600),
+    ];
+    const buckets = reporting.reportingTimeline(
+      [...entries, ...outliers],
+      range,
+      period,
+    );
+    assert.equal(buckets[0].start, range.start);
+    assert.equal(buckets.at(-1).end, range.end);
+    assert.equal(
+      buckets.reduce((sum, b) => sum + b.seconds, 0),
+      entries.length * 60,
+    );
+    assert.equal(
+      buckets.reduce((sum, b) => sum + b.count, 0),
+      entries.length,
+    );
+    for (let i = 1; i < buckets.length; i++)
+      assert.equal(buckets[i].start, model.shiftDay(buckets[i - 1].end, 1));
+    assert.ok(
+      reporting
+        .reportingTimeline([], range, period)
+        .every((b) => b.seconds === 0),
+    );
+    if (period === "weekly") assert.equal(buckets.length, 7);
+    if (period === "monthly") assert.equal(buckets.length, 5);
+  }
+});
+test("period selector and activity render all three ranges and accessible date-specific details", () => {
+  const React = require("react"),
+    { renderToStaticMarkup } = require("react-dom/server");
+  const deps = {
+    "./model": model,
+    "./reporting": reporting,
+    "./tracker.module.css": { default: {} },
+  };
+  const Selector = load(
+    "app/growth-board/ReportingPeriodSelect.tsx",
+    deps,
+  ).default;
+  const Chart = load("app/growth-board/ActivityChart.tsx", deps).default;
+  const range = reporting.reportingRange("2026-11-23", "weekly");
+  const controls = renderToStaticMarkup(
+    React.createElement(Selector, {
+      period: "weekly",
+      range,
+      onChange: () => {},
+    }),
+  );
+  assert.ok(controls.includes('aria-label="Dashboard period"'));
+  for (const option of ["Weekly", "Monthly", "Annual"])
+    assert.ok(controls.includes(option));
+  assert.equal((controls.match(/aria-pressed="true"/g) || []).length, 1);
+  const chart = renderToStaticMarkup(
+    React.createElement(Chart, {
+      period: "weekly",
+      range,
+      sessions: [
+        session("2026-11-23", "a", 1500),
+        session("2026-11-01", "a", 3600),
+      ],
+    }),
+  );
+  assert.equal((chart.match(/role="tooltip"/g) || []).length, 7);
+  assert.ok(chart.includes("25m"));
+  assert.ok(!chart.includes("1h"));
+});

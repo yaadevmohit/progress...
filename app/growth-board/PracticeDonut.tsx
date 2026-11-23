@@ -5,10 +5,12 @@ import { donutPath } from "./donut-path";
 import styles from "./tracker.module.css";
 export default function PracticeDonut({
   skills,
+  label = "total time",
   selectedId,
   onSelect,
 }: {
   skills: { id: string; name: string; slot: number; seconds: number }[];
+  label?: string;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
 }) {
@@ -77,7 +79,7 @@ export default function PracticeDonut({
           {durationLabel(total)}
         </span>
         <span className="mt-1 text-xs font-semibold text-[var(--tracker-muted)]">
-          total time
+          {label}
         </span>
       </div>
       {active && (

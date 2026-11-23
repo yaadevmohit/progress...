@@ -27,6 +27,8 @@ export default function SkillDetail({
   sessions,
   allSkills = [skill],
   stats = [],
+  periodLabel = "total time",
+  allSessions = sessions,
   onSelect,
   onBack,
   onLog,
@@ -34,6 +36,8 @@ export default function SkillDetail({
 }: {
   skill: Skill & { seconds: number; ownSeconds?: number };
   sessions: LearningSession[];
+  allSessions?: LearningSession[];
+  periodLabel?: string;
   allSkills?: Skill[];
   stats?: ReturnType<typeof skillStats>;
   onSelect?: (id: string) => void;
@@ -109,7 +113,7 @@ export default function SkillDetail({
           <p className="mt-1 text-sm font-bold">
             {durationLabel(skill.seconds)}{" "}
             <span className="text-xs font-semibold text-(--tracker-muted)">
-              total time
+              {periodLabel}
             </span>
           </p>
         </div>
@@ -308,8 +312,9 @@ export default function SkillDetail({
                             ?.name ?? skill.name
                         }
                         count={
-                          sessions.filter((s) => s.skillId === session.skillId)
-                            .length
+                          allSessions.filter(
+                            (s) => s.skillId === session.skillId,
+                          ).length
                         }
                       />
                     </div>
