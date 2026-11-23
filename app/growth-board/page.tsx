@@ -1,6 +1,9 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, Plus, X } from "lucide-react";
+import AccountButtons from "../auth/AccountButtons";
+import { displayName, useAuth } from "../auth/AuthProvider";
+import { BoardSyncStatus } from "./BoardDataProvider";
 import SkillComposer from "./SkillComposer";
 import SkillActions from "./SkillActions";
 import DeleteSessionButton from "./DeleteSessionButton";
@@ -147,6 +150,7 @@ function Timer({
   );
 }
 export default function GrowthBoard() {
+  const { user } = useAuth();
   const { state, error: storageError, ready } = useTracker(),
     now = useClock();
   const today = now ? localDay(new Date(now)) : "2000-01-01";
@@ -236,6 +240,7 @@ export default function GrowthBoard() {
   }, [timer, now]);
   const reminder =
     ready &&
+    !user &&
     now !== null &&
     (state.reminderDismissedAt === null ||
       now - state.reminderDismissedAt >= REMINDER_INTERVAL);
@@ -286,6 +291,7 @@ export default function GrowthBoard() {
             Log session
           </button>
           <ThemeToggle />
+          <AccountButtons growth />
         </div>
       </ScrollHeader>
       <main className={styles.main}>
@@ -293,7 +299,7 @@ export default function GrowthBoard() {
           <div className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Hello, learner
+                Hello, {displayName(user)}
                 <span className="text-[var(--tracker-accent)]">.</span>
               </h1>
               <p className="mt-1 text-sm font-semibold text-[var(--tracker-muted)]">
@@ -301,6 +307,7 @@ export default function GrowthBoard() {
               </p>
             </div>
           </div>
+          <BoardSyncStatus />
           {(storageError || error) && (
             <div
               role="alert"
@@ -343,9 +350,8 @@ export default function GrowthBoard() {
           {reminder && (
             <aside className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[var(--tracker-line)] bg-[var(--tracker-soft)] px-4 py-3">
               <p className="text-xs leading-relaxed text-[var(--tracker-ink)]">
-                <strong>Learn here. Take your progress anywhere, soon.</strong>{" "}
-                Sign-in and sync are coming soon. For now, your progress stays
-                in this browser. Export a backup to keep a copy.
+                <strong>Take your progress with you.</strong>{" "}
+                Sign in or create an account to save a board online. Your guest progress stays in this browser; you can import it into an empty account board. Export a backup to keep a copy.
               </p>
               <button
                 onClick={() => void snooze()}
@@ -754,7 +760,7 @@ export default function GrowthBoard() {
               </ul>
             )}
             <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
-              Local storage only · No account or cloud sync yet
+              {user ? "Saved to your account · Connection required to save changes" : "Guest board · Saved in this browser"}
             </p>
           </section>
         )}

@@ -4,7 +4,9 @@ track up to six skills, log practice, run a focus timer and save learning resour
 
 open `/growth-board` to use the app.
 
-everything stays in your browser for now. there is no database or authentication.
+Guest boards stay in your browser. Sign in with email/password or Google to save a private board in Supabase and greet you by name.
+
+Follow [the authentication and database setup guide](docs/authentication-setup.md) to create the database, configure credentials, and enable Google sign-in. Start with Node.js 22+ (Node 24 is specified in `.nvmrc`).
 
 to run locally:
 
@@ -13,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-the app folder contains the screens and components. the docs folder has the proposed database schema.
+the app folder contains the screens and components. the live database migration is in `supabase/migrations`; the docs folder includes setup instructions and an older design-only schema.
 
 to check and build:
 

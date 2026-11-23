@@ -1,5 +1,6 @@
 "use client";
 
+import { requireSupabase } from "../../lib/supabase";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
@@ -13,6 +14,7 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const signup = mode === "signup";
@@ -27,7 +29,7 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
     onModeChange(signup ? "login" : "signup");
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields = new FormData(event.currentTarget);
     setMessage("");
@@ -41,13 +43,31 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
       return;
     }
     setError("");
-    setMessage("This is a preview. Account authentication isn’t connected yet.");
-    event.currentTarget.reset();
+    setBusy(true);
+    const form = event.currentTarget;
+    try {
+      const client = requireSupabase();
+      const email = String(fields.get("email") ?? "").trim();
+      const password = String(fields.get("password") ?? "");
+      const { data, error } = signup
+        ? await client.auth.signUp({ email, password, options: {
+            data: { display_name: String(fields.get("name")).trim() },
+            emailRedirectTo: `${location.origin}/growth-board`,
+          } })
+        : await client.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      form.reset();
+      if (data.session) dialog.current?.close();
+      else setMessage("Check your email to confirm your account, then sign in. If you already have an account, try signing in.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not sign in. Please try again.");
+    } finally { setBusy(false); }
   }
 
   return (
     <dialog
       ref={dialog}
+      onCancel={(event) => { if (busy) event.preventDefault(); }}
       aria-labelledby="auth-title"
       aria-describedby="auth-description"
       onClose={() => {
@@ -68,16 +88,25 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
             {signup ? "Make a little progress, every day." : "Log in to keep your progress going."}
           </p>
         </div>
-        <button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="cursor-pointer rounded-lg p-1.5 text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600">
+        <button type="button" disabled={busy} aria-label="Close" onClick={() => dialog.current?.close()} className="cursor-pointer rounded-lg p-1.5 text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600">
           <X size={20} aria-hidden="true" />
         </button>
       </div>
 
       <button
         type="button"
-        onClick={() => {
+        disabled={busy}
+        onClick={async () => {
           setError("");
-          setMessage("Google sign-in isn’t connected in this preview yet.");
+          setBusy(true);
+          try {
+            const { error } = await requireSupabase().auth.signInWithOAuth({
+              provider: "google", options: { redirectTo: `${location.origin}/growth-board` },
+            });
+            if (error) throw error;
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "Could not start Google sign-in.");
+          } finally { setBusy(false); }
         }}
         className="mt-6 flex w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-semibold text-blue-950 transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600"
       >
@@ -96,7 +125,7 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
         <span className="h-px flex-1 bg-blue-100" />
       </div>
 
-      <form key={mode} onSubmit={submit} className="space-y-4 motion-safe:animate-[panel-enter_180ms_ease-out_both]">
+      <form key={mode} onSubmit={submit}><fieldset disabled={busy} className="space-y-4 disabled:opacity-60 motion-safe:animate-[panel-enter_180ms_ease-out_both]">
         {signup && (
           <label className="block text-sm font-semibold text-blue-950">
             Name
@@ -120,13 +149,13 @@ export default function AuthDialog({ mode, onModeChange, onClose }: {
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {message && <p role="status" className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{message}</p>}
         <button type="submit" className="w-full cursor-pointer rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm shadow-blue-600/15 transition-all hover:bg-blue-700 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-          {signup ? "Create account" : "Log in"}
+          {busy ? "Please wait…" : signup ? "Create account" : "Log in"}
         </button>
-      </form>
+      </fieldset></form>
 
       <p className="mt-5 text-center text-sm text-neutral-500">
         {signup ? "Already have an account? " : "New to progress..? "}
-        <button type="button" onClick={switchMode} className="cursor-pointer rounded font-semibold text-blue-600 hover:text-blue-800 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600">
+        <button type="button" disabled={busy} onClick={switchMode} className="cursor-pointer rounded font-semibold text-blue-600 hover:text-blue-800 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600">
           {signup ? "Log in" : "Sign up"}
         </button>
       </p>

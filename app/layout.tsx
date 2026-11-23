@@ -5,6 +5,7 @@ import { TRACKER_THEME_SCRIPT } from "./growth-board/theme-config";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AmbientAudioProvider } from "./ui/components/AmbientAudio";
+import AuthProvider from "./auth/AuthProvider";
 import Header from "./ui/components/Header";
 import { SessionTimerProvider } from "./ui/components/SessionTimerContext";
 
@@ -37,6 +38,7 @@ export default function RootLayout({
         <Script id="skills-tracker-theme" strategy="beforeInteractive">
           {TRACKER_THEME_SCRIPT}
         </Script>
+        <AuthProvider>
         <AmbientAudioProvider>
         <JobHuntProfileProvider>
         <SessionTimerProvider>
@@ -45,6 +47,7 @@ export default function RootLayout({
         </SessionTimerProvider>
         </JobHuntProfileProvider>
         </AmbientAudioProvider>
+        </AuthProvider>
       </body>
     </html>
   );

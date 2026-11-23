@@ -21,7 +21,33 @@ import {
   type Skill,
   type TrackerState,
 } from "./model";
-export const STORAGE_KEY = "progress.skills-tracker.v1";
+export const GUEST_STORAGE_KEY = "progress.skills-tracker.v1";
+export let STORAGE_KEY = GUEST_STORAGE_KEY;
+type Persistence = { save: (state: TrackerState) => Promise<void> };
+let persistence: Persistence | null = null;
+let blocked = false;
+export function configureTracker(userId: string | null, adapter: Persistence | null = null, loading = false) {
+  STORAGE_KEY = userId ? `${GUEST_STORAGE_KEY}.user.${userId}` : GUEST_STORAGE_KEY;
+  persistence = adapter;
+  blocked = loading;
+  window.dispatchEvent(new Event(CHANGE));
+}
+export function replaceTracker(state: TrackerState) {
+  const raw = JSON.stringify(state);
+  const parsed = decodeTracker(raw);
+  if (parsed.error) throw new Error(parsed.error);
+  localStorage.setItem(STORAGE_KEY, raw);
+  window.dispatchEvent(new Event(CHANGE));
+}
+export async function importGuestTracker() {
+  const parsed = decodeTracker(localStorage.getItem(GUEST_STORAGE_KEY) ?? EMPTY);
+  if (parsed.error) throw new Error(parsed.error);
+  return mutate((state) => {
+    if (state.skills.length || state.sessions.length || state.activeTimer || state.retainedPractice?.length)
+      throw new Error("Browser progress can only be imported into an empty account board.");
+    return { state: parsed.state, result: null };
+  });
+}
 const CHANGE = "skills-tracker:changed";
 const EMPTY = JSON.stringify(EMPTY_STATE);
 function snapshot() {
@@ -56,13 +82,18 @@ export function useTracker() {
 async function mutate<T>(
   change: (state: TrackerState) => { state: TrackerState; result: T },
 ): Promise<T> {
-  const update = () => {
+  const key = STORAGE_KEY;
+  const adapter = persistence;
+  const update = async () => {
+    if (blocked || key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your board is loading or your account changed. Please try again.");
     const raw = localStorage.getItem(STORAGE_KEY) ?? EMPTY;
     const parsed = decodeTracker(raw);
     if (parsed.error) throw new Error(parsed.error);
     const next = change(parsed.state);
     if (!decodeTracker(JSON.stringify(next.state)).error) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next.state));
+      if (adapter) await adapter.save(next.state);
+      if (key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your account changed. Reload your board before continuing.");
+      localStorage.setItem(key, JSON.stringify(next.state));
       window.dispatchEvent(new Event(CHANGE));
       return next.result;
     }
@@ -71,7 +102,7 @@ async function mutate<T>(
   try {
     return navigator.locks
       ? await navigator.locks.request(STORAGE_KEY, update)
-      : update();
+      : await update();
   } catch (error) {
     if (error instanceof Error && !(error instanceof DOMException)) throw error;
     throw new Error(
