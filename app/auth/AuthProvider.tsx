@@ -11,6 +11,9 @@ export function displayName(user: User | null) {
   const name = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name;
   return (typeof name === "string" && name.trim() ? name.trim() : user?.email?.split("@")[0]) || "learner";
 }
+export function firstName(user: User | null) {
+  return displayName(user).split(/\s+/u)[0];
+}
 export async function signOut() {
   const { error } = await requireSupabase().auth.signOut({ scope: "local" });
   if (error) throw error;
