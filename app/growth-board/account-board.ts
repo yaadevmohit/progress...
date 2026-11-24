@@ -16,10 +16,45 @@ function parseBoard(value: unknown) {
   return parsed.state;
 }
 
+// JSONB may reorder object keys. Compare content rather than serialized key order.
+function sameContent(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => sameContent(value, right[index]));
+  }
+  const a = left as Record<string, unknown>, b = right as Record<string, unknown>;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && sameContent(a[key], b[key]));
+}
+function alreadySaved(guest: TrackerState, saved: TrackerState) {
+  const skills = new Map(saved.skills.map((skill) => [skill.id, skill]));
+  const sessions = new Map(saved.sessions.map((session) => [session.id, session]));
+  return guest.skills.every((skill) => {
+    const online = skills.get(skill.id);
+    return !!online && sameContent({ ...skill, resources: skill.resources ?? [] }, { ...online, resources: online.resources ?? [] });
+  }) && guest.sessions.every((session) => sameContent(session, sessions.get(session.id)))
+    && (!guest.activeTimer || sameContent(guest.activeTimer, saved.activeTimer));
+}
+function clearSavedGuest(storage: GuestStorage, saved: TrackerState) {
+  try {
+    const raw = storage.getItem(GUEST_KEY);
+    if (raw === null) return;
+    const parsed = decodeTracker(raw);
+    // Loading another account must never erase unrelated or unsaved guest work.
+    if (!parsed.error && alreadySaved(parsed.state, saved) && storage.getItem(GUEST_KEY) === raw) storage.removeItem(GUEST_KEY);
+  } catch { /* Browser cleanup must not hide a successfully loaded account. */ }
+}
+function loadedBoard(data: SavedBoard, storage: GuestStorage) {
+  const state = parseBoard(data.board);
+  clearSavedGuest(storage, state);
+  return { state, revision: data.revision };
+}
+
 export async function loadAccountBoard(database: BoardDatabase, storage: GuestStorage) {
   const existing = await database.read();
   if (existing.error) throw new Error(existing.error.message);
-  if (existing.data) return { state: parseBoard(existing.data.board), revision: existing.data.revision };
+  if (existing.data) return loadedBoard(existing.data, storage);
 
   // Wait for a verified session before transferring anything. Read the latest
   // guest board, including practice done while email confirmation was pending.
@@ -32,7 +67,7 @@ export async function loadAccountBoard(database: BoardDatabase, storage: GuestSt
     const latest = await database.read();
     if (latest.error) throw new Error(latest.error.message);
     if (!latest.data) throw new Error("Your board changed. Please retry loading it.");
-    return { state: parseBoard(latest.data.board), revision: latest.data.revision };
+    return loadedBoard(latest.data, storage);
   }
   if (created.data === null) throw new Error("The database did not confirm your board was saved. Please retry.");
 

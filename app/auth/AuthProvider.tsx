@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { clearAccountCaches } from "./account-cache";
+import { clearAccountCaches, hasPendingAccountChanges } from "./account-cache";
 import type { User } from "@supabase/supabase-js";
 import { getSupabase, requireSupabase } from "../lib/supabase";
 
@@ -15,7 +15,8 @@ export function displayName(user: User | null) {
 export function firstName(user: User | null) {
   return displayName(user).split(/\s+/u)[0];
 }
-export async function signOut() {
+export async function signOut(userId?: string) {
+  if (hasPendingAccountChanges(localStorage, userId)) throw new Error("Reconnect and sync your offline changes before signing out. Your work is saved on this device.");
   const { error } = await requireSupabase().auth.signOut({ scope: "local" });
   if (error) throw error;
 }

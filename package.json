@@ -13,7 +13,8 @@
     "test:growth-board-auth": "node --test tests/growth-board-auth.test.cjs",
     "seed:mock-users": "node scripts/seed-mock-users.mjs",
     "test:mock-users": "node --test tests/mock-users.test.cjs",
-    "test:security": "node --test tests/security.test.cjs"
+    "test:security": "node --test tests/security.test.cjs",
+    "test:offline-sync": "node --test tests/offline-sync.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

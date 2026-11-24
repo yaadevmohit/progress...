@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { activeSkills, decodeTracker, EMPTY_STATE } from "./model";
-import { cancelTimer, finishTimer, startTimer, STORAGE_KEY } from "./storage";
+import { activeSkills, decodeTracker } from "./model";
+import { cancelTimer, finishTimer, startTimer, readTrackerRaw } from "./storage";
 
 // The content script is installed only on the origin explicitly connected by
 // the user. No remote page receives Chrome APIs or arbitrary storage access.
 export default function ExtensionBridge() {
   useEffect(() => {
     const read = () => {
-      const decoded = decodeTracker(localStorage.getItem(STORAGE_KEY) ?? JSON.stringify(EMPTY_STATE));
+      const decoded = decodeTracker(readTrackerRaw());
       if (decoded.error) throw new Error(decoded.error);
       return decoded.state;
     };
