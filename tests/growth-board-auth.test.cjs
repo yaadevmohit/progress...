@@ -246,12 +246,13 @@ test('account menu uses only the first name on every screen size', () => {
   assert.equal(firstName({ user_metadata: {}, email: 'mohit@example.com' }), 'mohit');
 });
 
-test('the first-name button reveals sign out only after opening the account menu', () => {
+test('the account menu supports mobile sign-out taps and keyboard focus dismissal', async () => {
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
   const { firstName } = load('app/auth/AuthProvider.tsx', { '../lib/supabase': {} });
   const state = [];
   let cursor = 0;
+  let signOutCalls = 0;
   const AccountButtons = load('app/auth/AccountButtons.tsx', {
     react: {
       ...React,
@@ -267,10 +268,11 @@ test('the first-name button reveals sign out only after opening the account menu
     './AuthProvider': {
       useAuth: () => ({ user: { id: 'alice', user_metadata: { display_name: 'Mohit Yadav' } }, ready: true }),
       firstName,
+      signOut: async () => { signOutCalls++; },
     },
     '../ui/components/AuthDialog': { default: () => null },
   }).default;
-  const render = () => { cursor = 0; return AccountButtons({ growth: true }); };
+  const render = () => { cursor = 0; return AccountButtons({ growth: true, compactMobile: true }); };
   function find(node, predicate) {
     if (!node || typeof node !== 'object') return null;
     if (predicate(node)) return node;
@@ -292,6 +294,27 @@ test('the first-name button reveals sign out only after opening the account menu
   tree = render();
   assert.ok(find(tree, node => node.props?.role === 'menu'));
   assert.ok(renderToStaticMarkup(tree).includes('Sign out'));
+
+  // Touch browsers can blur the focused item to the page before dispatching click.
+  const inside = {};
+  const currentTarget = { contains: target => target === inside };
+  tree.props.onBlur({ currentTarget, relatedTarget: null });
+  tree = render();
+  const signOutItem = find(tree, node => node.props?.role === 'menuitem');
+  assert.ok(signOutItem, 'a mobile blur must leave the sign-out target mounted until click');
+  await signOutItem.props.onClick();
+  assert.equal(signOutCalls, 1);
+  assert.equal(find(render(), node => node.props?.role === 'menu'), null);
+
+  find(render(), node => node.props?.['aria-haspopup'] === 'menu').props.onClick();
+  tree = render();
+  tree.props.onBlur({ currentTarget, relatedTarget: inside });
+  assert.ok(find(render(), node => node.props?.role === 'menu'));
+  tree.props.onBlur({ currentTarget, relatedTarget: {} });
+  assert.equal(find(render(), node => node.props?.role === 'menu'), null);
+
+  find(render(), node => node.props?.['aria-haspopup'] === 'menu').props.onClick();
+  tree = render();
   find(tree, node => node.props?.['aria-haspopup'] === 'menu').props.onClick();
   assert.equal(find(render(), node => node.props?.role === 'menu'), null);
 });
