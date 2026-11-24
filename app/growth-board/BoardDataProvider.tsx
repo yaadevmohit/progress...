@@ -12,10 +12,22 @@ import type { ConflictChoice } from "./offline-merge";
 import { configureTracker, GUEST_STORAGE_KEY, importGuestTracker, replaceTracker, synchronizeTracker } from "./storage";
 
 const INITIAL_STATUS: SyncStatus = { mode: "online", pending: false, message: "" };
-const BoardContext = createContext({ signedIn: false, saving: false, canImport: false, importBrowser: async () => {},
-  status: INITIAL_STATUS, refresh: (async () => {}) as (choice?: ConflictChoice) => Promise<void> });
+type BoardContextValue = {
+  signedIn: boolean;
+  saving: boolean;
+  canImport: boolean;
+  importBrowser: () => Promise<void>;
+  status: SyncStatus;
+  refresh: (choice?: ConflictChoice) => Promise<void>;
+};
+const BoardContext = createContext<BoardContextValue | null>(null);
+function useBoardContext() {
+  const context = useContext(BoardContext);
+  if (!context) throw new Error("Your account board could not be opened. Please reload the app.");
+  return context;
+}
 export function BoardRefreshButton() {
-  const { signedIn, saving, refresh } = useContext(BoardContext);
+  const { signedIn, saving, refresh } = useBoardContext();
   if (!signedIn) return null;
   return <button type="button" aria-label={saving ? "Saving board" : "Refresh board"}
     title={saving ? "Saving changes…" : "Refresh board"} disabled={saving} onClick={() => void refresh()}
@@ -24,7 +36,7 @@ export function BoardRefreshButton() {
   </button>;
 }
 export function BoardSyncStatus() {
-  const { signedIn, saving, canImport, importBrowser, status, refresh } = useContext(BoardContext);
+  const { signedIn, saving, canImport, importBrowser, status, refresh } = useBoardContext();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   if (!signedIn || (!canImport && status.mode === "online")) return null;
