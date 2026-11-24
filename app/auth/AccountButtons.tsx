@@ -58,7 +58,9 @@ export default function AccountButtons({
       ref={container}
       className={`relative flex ${compactMobile ? "flex-nowrap" : "flex-wrap"} items-center gap-1 sm:gap-2`}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget))
+        // Touch browsers can clear focus before the sign-out click fires.
+        // Outside pointer presses are handled separately above.
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget))
           setMenuOwner(null);
       }}
     >
