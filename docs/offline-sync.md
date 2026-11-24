@@ -1,6 +1,6 @@
 # Signed-in offline sync
 
-Signed-in boards normally live in memory and Postgres. Successful online loads and saves do not keep a full account board in localStorage. Supabase's session metadata and theme preferences still use their existing storage; guests continue to use their browser board.
+Signed-in boards normally live in memory and Postgres. Successful online loads and saves do not keep a full account board in localStorage. Supabase's session metadata and theme preferences still use their existing storage; signed-out visitors see a sign-in screen, while any legacy browser board is retained privately for migration.
 
 When the open board loses internet connectivity, the app saves an account-scoped offline envelope in `progress.skills-tracker.v1.user.<user-id>.offline` and displays a connection notice. It contains the last acknowledged database board (the baseline) and the current locally edited board. Storage is written before an offline edit is acknowledged. If storage is blocked or full, the edit reports an error instead of pretending it was saved.
 

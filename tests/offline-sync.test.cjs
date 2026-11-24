@@ -191,7 +191,7 @@ test('offline and conflicting-edit notices render clear retry and resolution con
   let context = { signedIn: true, saving: false, canImport: false, status: { mode: 'offline', pending: true, message: 'No internet connection. Changes are saved on this device.' }, refresh: async () => {} };
   const Status = load('app/growth-board/BoardDataProvider.tsx', {
     react: { ...React, useContext: () => context }, './model': model,
-    '../auth/AuthProvider': {}, '../auth/AccountButtons': {}, '../lib/supabase': {},
+    '../auth/AuthProvider': {}, '../auth/SignInRequired': {}, '../auth/AccountButtons': {}, '../lib/supabase': {},
     './account-board': {}, './offline-sync': syncModule, './storage': {}, './BoardSkeleton': {},
   }).BoardSyncStatus;
   const html = renderToStaticMarkup(React.createElement(Status));

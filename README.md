@@ -4,7 +4,7 @@ track up to six skills, log practice, run a focus timer and save learning resour
 
 open `/growth-board` to use the app.
 
-Guest boards stay in your browser. Sign in with email/password or Google to save a private board in Supabase and greet you by name.
+Sign in with email/password or Google to open your private Supabase board. Signing out hides all dashboard data, including old browser-only history. Legacy guest progress is preserved for migration after sign-in.
 
 Follow [the authentication and database setup guide](docs/authentication-setup.md) to create the database, configure credentials, and enable Google sign-in. Start with Node.js 22+ (Node 24 is specified in `.nvmrc`).
 

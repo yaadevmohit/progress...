@@ -1,3 +1,4 @@
+import AccountVisibility from "@/app/auth/SignInRequired";
 import UserGreeting from "@/app/ui/components/UserGreeting";
 import MostPracticed from "@/app/ui/components/MostPracticed";
 import SkillCard from "@/app/ui/components/SkillCard";
@@ -7,7 +8,7 @@ import { HOBBIES, SKILL_STATS } from "@/app/ui/mock-data";
 
 export default function Dashboard() {
   return (
-    <main className="mx-auto w-full max-w-[75rem] px-4 pb-8 sm:px-6">
+    <AccountVisibility><main className="mx-auto w-full max-w-[75rem] px-4 pb-8 sm:px-6">
       {/* The header occupies 69px above the desktop overview. */}
       <div className="flow-root md:min-h-[calc(100svh-69px)]">
         <UserGreeting />
@@ -26,6 +27,6 @@ export default function Dashboard() {
       <div className="mt-4">
         <RecentSessions />
       </div>
-    </main>
+    </main></AccountVisibility>
   );
 }

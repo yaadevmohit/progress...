@@ -31,7 +31,7 @@ test('every Growth Board route receives the account boundary and extension regar
 });
 test('missing account boundary fails visibly instead of quietly presenting an empty guest board', () => {
   const { BoardRefreshButton } = load('app/growth-board/BoardDataProvider.tsx', {
-    '../auth/AuthProvider': {}, '../auth/AccountButtons': {}, './BoardSkeleton': {}, '../lib/supabase': {},
+    '../auth/AuthProvider': {}, '../auth/SignInRequired': {}, '../auth/AccountButtons': {}, './BoardSkeleton': {}, '../lib/supabase': {},
     './account-board': {}, './model': {}, './offline-sync': {}, './storage': {},
   });
   assert.throws(() => renderToStaticMarkup(React.createElement(BoardRefreshButton)), /account board could not be opened/);
