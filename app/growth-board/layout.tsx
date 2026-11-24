@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import BoardDataProvider from "./BoardDataProvider";
+import ExtensionBridge from "./ExtensionBridge";
 export const metadata: Metadata = {
   title: "Growth Board",
   description:
@@ -9,5 +11,5 @@ export default function GrowthBoardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <BoardDataProvider><ExtensionBridge />{children}</BoardDataProvider>;
 }

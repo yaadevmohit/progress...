@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Plus, X } from "lucide-react";
 import AccountButtons from "../auth/AccountButtons";
 import { displayName, useAuth } from "../auth/AuthProvider";
-import BoardDataProvider, { BoardRefreshButton, BoardSyncStatus } from "./BoardDataProvider";
-import ExtensionBridge from "./ExtensionBridge";
+import { BoardRefreshButton, BoardSyncStatus } from "./BoardDataProvider";
 import SkillComposer from "./SkillComposer";
 import SkillActions from "./SkillActions";
 import DeleteSessionButton from "./DeleteSessionButton";
@@ -853,10 +852,5 @@ function GrowthBoard() {
 }
 
 export default function GrowthBoardContent() {
-  return (
-    <BoardDataProvider>
-      <ExtensionBridge />
-      <GrowthBoard />
-    </BoardDataProvider>
-  );
+  return <GrowthBoard />;
 }
