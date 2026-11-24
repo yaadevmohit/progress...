@@ -15,7 +15,8 @@
     "test:mock-users": "node --test tests/mock-users.test.cjs",
     "test:security": "node --test tests/security.test.cjs",
     "test:offline-sync": "node --test tests/offline-sync.test.cjs",
-    "test:board-route": "node --test tests/board-route.test.cjs"
+    "test:board-route": "node --test tests/board-route.test.cjs",
+    "test:signed-out": "node --test tests/signed-out-board.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

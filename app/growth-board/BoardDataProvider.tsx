@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { RefreshCw, WifiOff } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
+import { SignInRequired } from "../auth/SignInRequired";
 import AccountButtons from "../auth/AccountButtons";
 import BoardSkeleton from "./BoardSkeleton";
 import { requireSupabase } from "../lib/supabase";
@@ -115,7 +116,7 @@ export default function BoardDataProvider({ children }: { children: React.ReactN
           replaceTracker(state);
           const guest = decodeTracker(localStorage.getItem(GUEST_STORAGE_KEY) ?? JSON.stringify(EMPTY_STATE));
           setCanImport(!state.skills.length && !state.sessions.length && !state.activeTimer && !guest.error && !!(guest.state.skills.length || guest.state.sessions.length || guest.state.activeTimer));
-        } else { configureTracker(null); controller.current = null; setCanImport(false); }
+        } else { configureTracker(null, null, true); controller.current = null; setCanImport(false); }
         if (alive) { setError(""); setLoadedFor(owner); booting = false; }
       } catch (error) { if (alive) setError(`Could not open your account board: ${(error as Error).message}`); }
     }
@@ -151,6 +152,7 @@ export default function BoardDataProvider({ children }: { children: React.ReactN
     };
   }, [ready, userId, owner, refresh]);
 
+  if (ready && !user) return <SignInRequired growth />;
   if (error || authError) return <main className="mx-auto w-full max-w-3xl p-6">
     <div className="mb-6 flex justify-end"><AccountButtons /></div>
     <p role="alert">{error || authError}</p><button className="mt-4 underline" onClick={() => location.reload()}>Retry loading board</button>
