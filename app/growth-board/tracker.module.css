@@ -174,10 +174,10 @@
   grid-row: 1;
   grid-column: 1;
 }
-.compact .donutCenter span:first-child {
+.compact .donutCenter > span:first-child {
   font-size: 23px;
 }
-.compact .donutCenter span:last-child {
+.compact .donutCenter > span:last-child {
   display: none;
 }
 .compact .leaderHeading {
@@ -391,16 +391,13 @@
   .dashboard {
     grid-template-columns: 1fr;
   }
-  .left {
-    order: 2;
-  }
   .ring {
     width: 120px;
     height: 120px;
     margin: 18px auto;
   }
   .skills {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
   .activity {
     padding: 16px;
@@ -594,7 +591,7 @@
 }
 @media (max-width: 480px) {
   .header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
   .headerActions {
     gap: 4px;
@@ -1135,9 +1132,122 @@
 .reportingDates strong {
   font-weight: 800;
 }
-@media (max-width: 600px) {
+
+.dashboardHeading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding: 16px 0;
+}
+.dashboardHeading > :first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pieSlice,
+.mobileFocusLabel,
+.periodShort {
+  display: none;
+}
+.reportingDates {
+  text-align: right;
+}
+@media (max-width: 760px) {
+  .dashboardHeading {
+    gap: 12px;
+  }
   .reportingControl {
-    width: 100%;
-    align-items: flex-start;
+    align-items: flex-end;
+    justify-self: end;
+  }
+  .reportingControl .activityViews {
+    gap: 2px;
+    padding: 3px;
+  }
+  .reportingControl .activityViews button {
+    min-width: 30px;
+    padding: 6px 7px;
+  }
+  .periodLong,
+  .donutSlice {
+    display: none;
+  }
+  .periodShort,
+  .pieSlice {
+    display: inline;
+  }
+  .mobileFocusLabel {
+    display: inline;
+  }
+  .ring,
+  .compact .ring {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ring .donut {
+    position: static;
+    height: auto;
+    aspect-ratio: 1;
+    flex-shrink: 0;
+  }
+  .compact .donutCenter > span:last-child {
+    display: block;
+  }
+  .donutCenter > span:last-child {
+    text-align: center;
+  }
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.brandMark {
+  display: none;
+}
+.footer {
+  margin-top: 24px;
+  padding: 22px 16px;
+  border-top: 1px solid var(--tracker-line);
+  background: var(--tracker-panel);
+  color: var(--tracker-muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+@media (max-width: 760px) {
+  .brandFull {
+    display: none;
+  }
+  .brandMark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    font-size: 19px;
+    font-weight: 800;
+    font-style: italic;
+    letter-spacing: -1px;
+  }
+  .header {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 12px;
+  }
+  .headerActions {
+    flex-wrap: nowrap;
+    gap: 4px;
+    min-width: 0;
+  }
+  .primary {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }

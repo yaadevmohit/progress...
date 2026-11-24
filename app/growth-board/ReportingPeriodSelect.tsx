@@ -26,10 +26,20 @@ export default function ReportingPeriodSelect({
           <button
             key={option.value}
             type="button"
+            aria-label={option.label}
             aria-pressed={period === option.value}
             onClick={() => onChange(option.value)}
           >
-            {option.label}
+            <span className={styles.periodLong} aria-hidden="true">
+              {option.label}
+            </span>
+            <span className={styles.periodShort} aria-hidden="true">
+              {option.value === "weekly"
+                ? "7d"
+                : option.value === "monthly"
+                  ? "m"
+                  : "y"}
+            </span>
           </button>
         ))}
       </div>
@@ -38,8 +48,11 @@ export default function ReportingPeriodSelect({
         aria-live="polite"
         aria-atomic="true"
       >
-        <strong>{range.label}</strong> · {reportingDate(range.start)} –{" "}
-        {reportingDate(range.end)}
+        <strong>{range.label}</strong>
+        <span className={styles.periodLong}>
+          {" "}
+          · {reportingDate(range.start)} – {reportingDate(range.end)}
+        </span>
       </p>
     </div>
   );
