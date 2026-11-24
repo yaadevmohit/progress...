@@ -40,13 +40,26 @@ export function replaceTracker(state: TrackerState) {
   window.dispatchEvent(new Event(CHANGE));
 }
 export async function importGuestTracker() {
-  const parsed = decodeTracker(localStorage.getItem(GUEST_STORAGE_KEY) ?? EMPTY);
-  if (parsed.error) throw new Error(parsed.error);
-  return mutate((state) => {
-    if (state.skills.length || state.sessions.length || state.activeTimer || state.retainedPractice?.length)
-      throw new Error("Browser progress can only be imported into an empty account board.");
-    return { state: parsed.state, result: null };
-  });
+  const key = STORAGE_KEY, adapter = persistence;
+  if (key === GUEST_STORAGE_KEY || !adapter || blocked) throw new Error("Sign in and wait for your account board before importing browser progress.");
+  const transfer = async () => {
+    if (key !== STORAGE_KEY || adapter !== persistence || blocked) throw new Error("Your account changed. Please try again.");
+    const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
+    const parsed = decodeTracker(guestRaw ?? EMPTY);
+    if (parsed.error) throw new Error(parsed.error);
+    await mutate((state) => {
+      if (state.skills.length || state.sessions.length || state.activeTimer || state.retainedPractice?.length)
+        throw new Error("Browser progress can only be imported into an empty account board.");
+      return { state: parsed.state, result: null };
+    });
+    // mutate returns only after the account save is acknowledged. Never remove
+    // a newer browser board or clear unrelated preferences and auth storage.
+    try {
+      if (guestRaw !== null && key === STORAGE_KEY && adapter === persistence && localStorage.getItem(GUEST_STORAGE_KEY) === guestRaw) localStorage.removeItem(GUEST_STORAGE_KEY);
+    } catch { /* A retained guest copy must not turn a confirmed save into an error. */ }
+    return null;
+  };
+  return navigator.locks ? navigator.locks.request(GUEST_STORAGE_KEY, transfer) : transfer();
 }
 const CHANGE = "skills-tracker:changed";
 const EMPTY = JSON.stringify(EMPTY_STATE);

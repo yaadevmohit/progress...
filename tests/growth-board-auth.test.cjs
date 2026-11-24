@@ -54,6 +54,7 @@ function browserStore() {
   const localStorage = {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
   };
   const store = load(
     "app/growth-board/storage.ts",
@@ -122,7 +123,7 @@ test("guest import is explicit and cannot overwrite an account board", async () 
   assert.equal(saves, 1);
   await assert.rejects(b.store.importGuestTracker(), /empty account board/);
   b.store.configureTracker(null);
-  assert.equal(b.read().skills[0].name, "Guest piano");
+  assert.equal(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY), null);
 });
 
 test('greeting uses account names with safe username and guest fallbacks', () => {
@@ -208,7 +209,7 @@ test('simultaneous account initialization reloads the winning board without over
   }, storage);
   assert.equal(loaded.revision, 2);
   assert.equal(reads, 2);
-  assert.notEqual(storage.getItem(), null);
+  assert.equal(storage.getItem(), null);
 });
 
 test('migration retains guest edits made in another tab before the save completes', async () => {
@@ -325,4 +326,84 @@ test('a sign-out in another tab prevents an in-flight save from restoring privat
   complete();
   await assert.rejects(pending, /signed out/);
   assert.equal(b.localStorage.getItem(b.store.STORAGE_KEY), null);
+});
+
+
+test("signing back in clears a matching guest copy even after more online practice", async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill("Piano");
+  await b.store.logSession(skill.id,25,"2026-11-14","Scales");
+  const guest = b.read(), storage = guestStorage(JSON.stringify(guest));
+  await b.store.logSession(skill.id,15,"2026-11-14","Chords");
+  // Simulate PostgreSQL JSONB returning different object-key order.
+  const saved = JSON.parse(JSON.stringify(b.read()), (key,value) => value && !Array.isArray(value) && typeof value === "object" ? Object.fromEntries(Object.entries(value).reverse()) : value);
+  const loaded = await loadAccountBoard({read: async () => ({data:{board:saved,revision:3},error:null}),create: async () => assert.fail("existing account must not be overwritten")},storage);
+  assert.equal(storage.getItem(),null);
+  assert.equal(loaded.state.sessions.length,2);
+});
+test("an existing account never clears changed guest notes, resources or a running timer", async () => {
+  const b = browserStore();
+  const skill = await b.store.addSkill("Piano");
+  await b.store.logSession(skill.id,25,"2026-11-14","Saved notes");
+  const online = b.read();
+  const variants = [
+    {...online,sessions:online.sessions.map(s=>({...s,notes:"Unsaved notes"}))},
+    {...online,skills:online.skills.map(s=>({...s,resources:[{id:"r",name:"New resource",url:"https://example.com"}]}))},
+  ];
+  await b.store.startTimer(skill.id,25,""); variants.push(b.read());
+  for (const guest of variants) {
+    const raw=JSON.stringify(guest),storage=guestStorage(raw);
+    await loadAccountBoard({read:async()=>({data:{board:online,revision:1},error:null}),create:async()=>assert.fail()},storage);
+    assert.equal(storage.getItem(),raw);
+  }
+});
+test("a failed or interrupted manual import retains the source; a confirmed import clears only guest progress", async () => {
+  const b=browserStore(); await b.store.addSkill("Piano");
+  const raw=b.localStorage.getItem(b.store.GUEST_STORAGE_KEY);
+  b.localStorage.setItem("theme","dark"); b.localStorage.setItem("auth-token","keep-session");
+  b.store.configureTracker("alice",{save:async()=>{throw new Error("Offline");}});
+  await assert.rejects(b.store.importGuestTracker(),/Offline/);
+  assert.equal(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),raw);
+  b.store.configureTracker("alice",{save:async()=>{}});
+  await b.store.importGuestTracker();
+  assert.equal(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),null);
+  assert.equal(b.localStorage.getItem("theme"),"dark"); assert.equal(b.localStorage.getItem("auth-token"),"keep-session");
+  b.store.configureTracker(null); await assert.rejects(b.store.importGuestTracker(),/Sign in/);
+});
+test("manual import preserves guest edits and account changes made while saving", async () => {
+  const b=browserStore();await b.store.addSkill("Piano");
+  const raw=b.localStorage.getItem(b.store.GUEST_STORAGE_KEY);
+  b.store.configureTracker("alice",{save:async()=>{b.localStorage.setItem(b.store.GUEST_STORAGE_KEY,JSON.stringify({...JSON.parse(raw),reminderDismissedAt:123}));}});
+  await b.store.importGuestTracker();
+  assert.notEqual(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),raw);
+  assert.notEqual(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),null);
+  b.store.configureTracker("bob",{save:async()=>{b.store.configureTracker("carol",{save:async()=>{}});}});
+  await assert.rejects(b.store.importGuestTracker(),/account changed/);
+  assert.notEqual(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),null);
+});
+test("a conflicting initialization only clears the guest board if the winner saved its content", async () => {
+  const b=browserStore();await b.store.addSkill("Unsaved piano");
+  const raw=b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),storage=guestStorage(raw);
+  let reads=0;
+  await loadAccountBoard({read:async()=>({data:++reads===1?null:{board:model.EMPTY_STATE,revision:2},error:null}),create:async()=>({data:null,error:{code:"40001",message:"Conflict"}})},storage);
+  assert.equal(storage.getItem(),raw);
+});
+
+test("manual import keeps the local source until the database acknowledges the full board", async () => {
+  const b=browserStore();await b.store.addSkill("Piano");
+  const raw=b.localStorage.getItem(b.store.GUEST_STORAGE_KEY);
+  let confirm;
+  b.store.configureTracker("alice",{save:()=>new Promise(resolve=>{confirm=resolve;})});
+  const pending=b.store.importGuestTracker();
+  assert.equal(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),raw);
+  assert.equal(b.localStorage.getItem(b.store.STORAGE_KEY),null);
+  confirm();await pending;
+  assert.equal(b.localStorage.getItem(b.store.GUEST_STORAGE_KEY),null);
+  assert.equal(b.read().skills[0].name,"Piano");
+});
+test("local cleanup restrictions and corrupt guest copies do not prevent opening a saved account", async () => {
+  for(const storage of [guestStorage("invalid json"),{getItem:()=>JSON.stringify(model.EMPTY_STATE),removeItem:()=>{throw new Error("Storage blocked");}}]) {
+    const loaded=await loadAccountBoard({read:async()=>({data:{board:model.EMPTY_STATE,revision:1},error:null}),create:async()=>assert.fail()},storage);
+    assert.equal(loaded.revision,1);
+  }
 });
