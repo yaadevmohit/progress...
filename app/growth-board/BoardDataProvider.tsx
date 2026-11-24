@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { RefreshCw, WifiOff } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import AccountButtons from "../auth/AccountButtons";
+import BoardSkeleton from "./BoardSkeleton";
 import { requireSupabase } from "../lib/supabase";
 import { loadAccountBoard } from "./account-board";
 import { decodeTracker, EMPTY_STATE } from "./model";
@@ -138,10 +139,11 @@ export default function BoardDataProvider({ children }: { children: React.ReactN
     };
   }, [ready, userId, owner, refresh]);
 
-  if (!ready || loadedFor !== owner || error || authError) return <main className="mx-auto w-full max-w-3xl p-6">
+  if (error || authError) return <main className="mx-auto w-full max-w-3xl p-6">
     <div className="mb-6 flex justify-end"><AccountButtons /></div>
-    {error || authError ? <><p role="alert">{error || authError}</p><button className="mt-4 underline" onClick={() => location.reload()}>Retry loading board</button></> : <p role="status">Opening your board…</p>}
+    <p role="alert">{error || authError}</p><button className="mt-4 underline" onClick={() => location.reload()}>Retry loading board</button>
   </main>;
+  if (!ready || loadedFor !== owner) return <BoardSkeleton />;
   return <BoardContext.Provider value={{ signedIn: !!user, saving: status.mode === "syncing", canImport, status, refresh,
     importBrowser: async () => { await importGuestTracker(); setCanImport(false); } }}>{children}</BoardContext.Provider>;
 }

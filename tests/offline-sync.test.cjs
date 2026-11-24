@@ -192,7 +192,7 @@ test('offline and conflicting-edit notices render clear retry and resolution con
   const Status = load('app/growth-board/BoardDataProvider.tsx', {
     react: { ...React, useContext: () => context }, './model': model,
     '../auth/AuthProvider': {}, '../auth/AccountButtons': {}, '../lib/supabase': {},
-    './account-board': {}, './offline-sync': syncModule, './storage': {},
+    './account-board': {}, './offline-sync': syncModule, './storage': {}, './BoardSkeleton': {},
   }).BoardSyncStatus;
   const html = renderToStaticMarkup(React.createElement(Status));
   assert.ok(html.includes('No internet connection')); assert.ok(html.includes('Retry sync'));

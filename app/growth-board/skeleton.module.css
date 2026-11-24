@@ -1,0 +1,36 @@
+.bone {
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--tracker-muted) 17%, var(--tracker-panel));
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+.card {
+  background: var(--tracker-panel);
+  animation: none;
+}
+
+.ring {
+  border: 20px solid color-mix(in srgb, var(--tracker-muted) 17%, var(--tracker-panel));
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+.activity {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.tile {
+  height: 64px;
+  border-radius: 10px;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone, .ring { animation: none; }
+}
