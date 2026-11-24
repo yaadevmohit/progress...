@@ -67,7 +67,7 @@ export default function AccountButtons({ growth = false }: { growth?: boolean })
       {menuOpen && <div id={menuId} role="menu" aria-label="Account" className={`absolute left-0 top-full z-50 mt-2 min-w-40 rounded-xl border p-1.5 shadow-lg ${growth ? "border-[var(--tracker-line)] bg-[var(--tracker-field)] text-[var(--tracker-ink)]" : "border-neutral-200 bg-white text-neutral-900"}`}>
         <button ref={signOutButton} type="button" role="menuitem" disabled={busy} className={`${base} flex w-full items-center gap-2 text-left ${growth ? "hover:bg-[var(--tracker-hover)]" : "hover:bg-neutral-100"}`} onClick={async () => {
           setBusy(true); setError("");
-          try { await signOut(); setMenuOwner(null); } catch (error) { setError((error as Error).message); } finally { setBusy(false); }
+          try { await signOut(user.id); setMenuOwner(null); } catch (error) { setError((error as Error).message); } finally { setBusy(false); }
         }}><LogOut size={16} aria-hidden="true" />{busy ? "Signing out…" : "Sign out"}</button>
       </div>}
     </> : <>

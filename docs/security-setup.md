@@ -1,6 +1,6 @@
 # Apply and verify the security fixes
 
-The security patch updates Next.js to 16.4.6, updates PostCSS and compatible transitive packages, clears all account board caches on sign-out, prevents in-flight saves from restoring cleared caches, and adds a nonce-based Content Security Policy (CSP) plus framing, MIME, referrer, and device-permission headers. Guest progress and theme preferences remain on the device.
+The security patch updates Next.js to 16.4.6, updates PostCSS and compatible transitive packages, clears clean account board caches on sign-out, prevents in-flight saves from restoring cleared caches, and adds a nonce-based Content Security Policy (CSP) plus framing, MIME, referrer, and device-permission headers. Guest progress and theme preferences remain on the device.
 
 The completed dependency audit reports zero known vulnerabilities as of November 23, 2026. This is not a guarantee against undiscovered issues; rerun the audit when dependencies change.
 
@@ -75,7 +75,7 @@ Then verify in the browser:
 
 1. Sign in, add a test skill, reload, and confirm it persists in the database.
 2. Sign out. In **Developer Tools → Application → Local Storage**, verify no keys starting with `progress.skills-tracker.v1.user.` remain. Guest and theme keys may remain.
-3. Repeat with two tabs open and sign out while an edit is saving. The old account cache must not reappear. A save already accepted by the database can remain in that account; it must not restore the browser cache after sign-out.
+3. Repeat with two tabs open. Pending offline edits block explicit sign-out until they sync. Automatic session expiration preserves an account-scoped outbox for recovery after signing back in. After syncing and signing out, clean account data must not reappear. A save already accepted by the database can remain in that account.
 4. Confirm both themes, account dialogs, chart selection, extension connection, and email/Google redirects work. Check the browser console for CSP violations. Use exact local/preview redirects in Supabase for any non-production testing origins.
 
 ## Ongoing local checks

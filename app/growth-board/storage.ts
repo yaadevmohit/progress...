@@ -23,10 +23,12 @@ import {
 } from "./model";
 export const GUEST_STORAGE_KEY = "progress.skills-tracker.v1";
 export let STORAGE_KEY = GUEST_STORAGE_KEY;
-type Persistence = { save: (state: TrackerState) => Promise<void> };
+type Persistence = { memoryOnly?: boolean; canImport?: () => boolean; save: (state: TrackerState, previous: TrackerState) => Promise<TrackerState | void> };
+const accountMemory = new Map<string, string>();
 let persistence: Persistence | null = null;
 let blocked = false;
 export function configureTracker(userId: string | null, adapter: Persistence | null = null, loading = false) {
+  if (persistence?.memoryOnly) accountMemory.delete(STORAGE_KEY);
   STORAGE_KEY = userId ? `${GUEST_STORAGE_KEY}.user.${userId}` : GUEST_STORAGE_KEY;
   persistence = adapter;
   blocked = loading;
@@ -36,7 +38,8 @@ export function replaceTracker(state: TrackerState) {
   const raw = JSON.stringify(state);
   const parsed = decodeTracker(raw);
   if (parsed.error) throw new Error(parsed.error);
-  localStorage.setItem(STORAGE_KEY, raw);
+  if (persistence?.memoryOnly) accountMemory.set(STORAGE_KEY, raw);
+  else localStorage.setItem(STORAGE_KEY, raw);
   window.dispatchEvent(new Event(CHANGE));
 }
 export async function importGuestTracker() {
@@ -44,6 +47,7 @@ export async function importGuestTracker() {
   if (key === GUEST_STORAGE_KEY || !adapter || blocked) throw new Error("Sign in and wait for your account board before importing browser progress.");
   const transfer = async () => {
     if (key !== STORAGE_KEY || adapter !== persistence || blocked) throw new Error("Your account changed. Please try again.");
+    if (adapter.canImport && !adapter.canImport()) throw new Error("Reconnect and sync your account before importing browser progress.");
     const guestRaw = localStorage.getItem(GUEST_STORAGE_KEY);
     const parsed = decodeTracker(guestRaw ?? EMPTY);
     if (parsed.error) throw new Error(parsed.error);
@@ -52,10 +56,10 @@ export async function importGuestTracker() {
         throw new Error("Browser progress can only be imported into an empty account board.");
       return { state: parsed.state, result: null };
     });
-    // mutate returns only after the account save is acknowledged. Never remove
-    // a newer browser board or clear unrelated preferences and auth storage.
+    // A transport failure may queue the import offline. Keep the guest copy
+    // until the adapter confirms there is no pending offline work.
     try {
-      if (guestRaw !== null && key === STORAGE_KEY && adapter === persistence && localStorage.getItem(GUEST_STORAGE_KEY) === guestRaw) localStorage.removeItem(GUEST_STORAGE_KEY);
+      if ((!adapter.canImport || adapter.canImport()) && guestRaw !== null && key === STORAGE_KEY && adapter === persistence && localStorage.getItem(GUEST_STORAGE_KEY) === guestRaw) localStorage.removeItem(GUEST_STORAGE_KEY);
     } catch { /* A retained guest copy must not turn a confirmed save into an error. */ }
     return null;
   };
@@ -63,8 +67,10 @@ export async function importGuestTracker() {
 }
 const CHANGE = "skills-tracker:changed";
 const EMPTY = JSON.stringify(EMPTY_STATE);
+export function readTrackerRaw() { return snapshot(); }
 function snapshot() {
   try {
+    if (persistence?.memoryOnly) return accountMemory.get(STORAGE_KEY) ?? EMPTY;
     return localStorage.getItem(STORAGE_KEY) ?? EMPTY;
   } catch {
     return EMPTY;
@@ -99,17 +105,21 @@ async function mutate<T>(
   const adapter = persistence;
   const update = async () => {
     if (blocked || key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your board is loading or your account changed. Please try again.");
-    const raw = localStorage.getItem(STORAGE_KEY) ?? EMPTY;
+    const raw = snapshot();
     const parsed = decodeTracker(raw);
     if (parsed.error) throw new Error(parsed.error);
     const cacheEpoch = key === GUEST_STORAGE_KEY ? null : localStorage.getItem("progress.skills-tracker.account-cache-epoch");
     const next = change(parsed.state);
     if (!decodeTracker(JSON.stringify(next.state)).error) {
-      if (adapter) await adapter.save(next.state);
+      const saved = adapter ? await adapter.save(next.state, parsed.state) : undefined;
+      const committed = saved ?? next.state;
+      const committedRaw = JSON.stringify(committed);
+      if (decodeTracker(committedRaw).error) throw new Error("The synced board could not be read safely.");
       if (key !== STORAGE_KEY || adapter !== persistence) throw new Error("Your account changed. Reload your board before continuing.");
       if (key !== GUEST_STORAGE_KEY && cacheEpoch !== localStorage.getItem("progress.skills-tracker.account-cache-epoch"))
         throw new Error("You signed out while this change was saving. Your browser cache was cleared.");
-      localStorage.setItem(key, JSON.stringify(next.state));
+      if (adapter?.memoryOnly) accountMemory.set(key, committedRaw);
+      else localStorage.setItem(key, committedRaw);
       window.dispatchEvent(new Event(CHANGE));
       return next.result;
     }
@@ -125,6 +135,17 @@ async function mutate<T>(
       "Couldn’t save in this browser. Check that local storage is allowed and has space, then try again.",
     );
   }
+}
+export async function synchronizeTracker(sync: () => Promise<TrackerState>) {
+  const key = STORAGE_KEY, adapter = persistence;
+  const update = async () => {
+    const epoch = localStorage.getItem("progress.skills-tracker.account-cache-epoch");
+    const state = await sync();
+    if (key !== STORAGE_KEY || adapter !== persistence || epoch !== localStorage.getItem("progress.skills-tracker.account-cache-epoch"))
+      throw new Error("Your account changed before syncing finished.");
+    replaceTracker(state);
+  };
+  return navigator.locks ? navigator.locks.request(key, update) : update();
 }
 export async function addSkill(
   name: string,
@@ -314,7 +335,7 @@ export async function dismissReminder() {
   }));
 }
 export function exportTracker() {
-  const raw = localStorage.getItem(STORAGE_KEY) ?? EMPTY;
+  const raw = snapshot();
   const blob = new Blob([raw], { type: "application/json" }),
     url = URL.createObjectURL(blob),
     link = document.createElement("a");

@@ -826,7 +826,7 @@ export default function GrowthBoard() {
             )}
             <p className="mt-6 text-center text-xs text-[var(--tracker-muted)]">
               {user
-                ? "Saved to your account · Connection required to save changes"
+                ? "Account board · Offline changes sync when you reconnect"
                 : "Guest board · Saved in this browser"}
             </p>
           </section>
